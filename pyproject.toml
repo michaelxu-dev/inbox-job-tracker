@@ -1,0 +1,41 @@
+[project]
+name = "inbox-job-tracker"
+version = "0.1.0"
+description = "Turn job-application replies in your mailbox into a spreadsheet you can actually read."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Michael Xu" }]
+keywords = ["job-search", "email", "imap", "gmail", "outlook", "job-applications", "ats"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: End Users/Desktop",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Communications :: Email",
+  "Topic :: Office/Business",
+]
+dependencies = []
+
+[project.optional-dependencies]
+graph = ["msal>=1.24", "requests>=2.28"]
+llm = ["anthropic>=0.40"]
+dev = ["pytest>=7"]
+
+[project.scripts]
+"inbox-job-tracker" = "inboxjobtracker.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/michaelxu-dev/inbox-job-tracker"
+Issues = "https://github.com/michaelxu-dev/inbox-job-tracker/issues"
+
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["inboxjobtracker*"]
+
+[tool.setuptools.package-data]
+"*" = ["../tests/fixtures/*.json"]

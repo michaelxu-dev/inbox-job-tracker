@@ -1,0 +1,134 @@
+[
+  {
+    "id": "d1",
+    "folder": "inbox",
+    "from_name": "Northwind Careers",
+    "from_address": "no-reply@us.greenhouse-mail.io",
+    "received": "2026-01-05T09:00:00Z",
+    "subject": "Thank you for applying to Northwind Robotics",
+    "expect": "Acknowledge",
+    "why": "plain receipt; 'Thanks for applying' phrasing and a contraction the strict patterns used to miss",
+    "body": "Hi Alex,\n\nThanks for applying to Northwind Robotics! Confirming we've received your application for the following role:\n\nJob Title: Senior Backend Engineer\nJob ID: 44120\n\nOur teams will review your application and reach out if there is a match."
+  },
+  {
+    "id": "d2",
+    "folder": "inbox",
+    "from_name": "Northwind Careers",
+    "from_address": "no-reply@us.greenhouse-mail.io",
+    "received": "2026-01-20T09:00:00Z",
+    "subject": "An update on your application to Northwind Robotics - Senior Backend Engineer",
+    "expect": "Reject",
+    "why": "negated advancement: 'unable to move forward' must not score as an invitation",
+    "body": "Hi Alex,\n\nThank you for your application for the position of Senior Backend Engineer. Unfortunately, at this time we are unable to move forward with your application.\n\nWe wish you success in your search."
+  },
+  {
+    "id": "d3",
+    "folder": "inbox",
+    "from_name": "Dana Reed",
+    "from_address": "dana.reed@contoso.com",
+    "received": "2026-01-12T09:00:00Z",
+    "subject": "Contoso: Interview Request!",
+    "expect": "Invite to first interview",
+    "why": "genuine invitation; 'next stage' must not be read as a second round",
+    "body": "Hi Alex,\n\nWe would like to invite you to the next stage of the interview process for the Staff Platform Engineer role, a video interview with our Engineering Manager.\n\nCould you share your availability this week?"
+  },
+  {
+    "id": "d4",
+    "folder": "inbox",
+    "from_name": "Dana Reed",
+    "from_address": "dana.reed@contoso.com",
+    "received": "2026-01-14T09:00:00Z",
+    "subject": "Re: Contoso: Interview Request!",
+    "expect": "Invite to first interview",
+    "why": "same scheduling episode as d3, so it must not become a second round",
+    "body": "Great - confirming your video interview for Monday at 10:00. Calendar invite to follow."
+  },
+  {
+    "id": "d5",
+    "folder": "inbox",
+    "from_name": "Contoso Talent",
+    "from_address": "contoso@myworkday.com",
+    "received": "2026-01-08T09:00:00Z",
+    "subject": "Thank you for your interest",
+    "expect": "Acknowledge",
+    "why": "receipt from an ATS tenant address; company must come from the local part, not 'Myworkday'",
+    "body": "Dear Alex,\n\nThank you for your interest in a career at Contoso. We have received your application for the Staff Platform Engineer role.\n\nOne of our Talent Acquisition Specialists will be in touch if we choose to move forward."
+  },
+  {
+    "id": "d6",
+    "folder": "inbox",
+    "from_name": "Contoso Talent",
+    "from_address": "contoso@otp.workday.com",
+    "received": "2026-01-08T09:05:00Z",
+    "subject": "Verify your candidate account",
+    "expect": "Unclear",
+    "why": "account plumbing subjected like a receipt; never an application response",
+    "body": "Click this link to confirm your email address and complete setup for your candidate account. The link will expire after 24 hours."
+  },
+  {
+    "id": "d7",
+    "folder": "inbox",
+    "from_name": "Assessment Centre",
+    "from_address": "no-reply@us.greenhouse-mail.io",
+    "received": "2026-01-16T09:00:00Z",
+    "subject": "Your assessment invitation",
+    "expect": "Invite to test",
+    "why": "assessment invite that mentions an interview in passing, sent by an ATS vendor so the employer comes from the body",
+    "body": "You have been invited to complete an online assessment for the Senior Data Engineer role at Fabrikam. If one of the assessments is a video interview, please check your camera. The link will expire in 7 days."
+  },
+  {
+    "id": "d8",
+    "folder": "inbox",
+    "from_name": "People Team",
+    "from_address": "hr@previous-employer.example",
+    "received": "2026-01-02T09:00:00Z",
+    "subject": "Termination of Employment",
+    "expect": "Unclear",
+    "why": "a layoff letter is worded exactly like a rejection",
+    "body": "Dear Alex,\n\nWe regret to inform you that, after careful evaluation, the decision has been made to terminate your employment, effective immediately.\n\nWe wish you the best."
+  },
+  {
+    "id": "d9",
+    "folder": "inbox",
+    "from_name": "Scheduling",
+    "from_address": "no-reply@interviews.example",
+    "received": "2026-01-18T09:00:00Z",
+    "subject": "Reminder: You have an upcoming interview with Contoso",
+    "expect": "Unclear",
+    "why": "reminder for an already-booked interview: neither a receipt nor a new invitation",
+    "body": "This is a reminder that your interview with Contoso is scheduled for tomorrow at 10:00."
+  },
+  {
+    "id": "d10",
+    "folder": "inbox",
+    "from_name": "Jordan Availability",
+    "from_address": "jordan.recruiter@gmail.com",
+    "received": "2026-01-19T09:00:00Z",
+    "subject": "Senior Software Engineer opportunity",
+    "expect": "Unclear",
+    "why": "personal webmail sender is not an employer's recruiting system",
+    "body": "Hi Alex, I would like to invite you to interview for a Senior Software Engineer role. Please share your availability."
+  },
+  {
+    "id": "d11",
+    "folder": "inbox",
+    "from_name": "Fabrikam Recruiting",
+    "from_address": "careers@fabrikam.example",
+    "received": "2026-01-11T09:00:00Z",
+    "subject": "Thank you for applying to Fabrikam",
+    "expect": "Acknowledge",
+    "why": "conditional pipeline description, not an offer",
+    "body": "Thanks for applying to Fabrikam! We have received your application for the Senior Data Engineer role. Next Steps: successful candidates move on to a video interview with the hiring team. We will be in touch about next steps if you are selected to move forward."
+  },
+  {
+    "id": "d12",
+    "folder": "inbox",
+    "from_name": "City Revenue Office",
+    "from_address": "donotreply@revenue.gov.example",
+    "received": "2026-01-03T09:00:00Z",
+    "subject": "Home Owner Grant Application",
+    "expect": "Unclear",
+    "why": "'application' with no hiring context at all",
+    "body": "Your home owner grant application has been submitted. Confirmation Number: 2-001-018."
+  }
+]

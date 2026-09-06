@@ -1,0 +1,26 @@
+{
+  "_comment": "Copy to config.json and edit. Secrets go in the environment, never here.",
+
+  "source": "imap",
+  "lookback_days": 90,
+
+  "imap_host": "imap.gmail.com",
+  "imap_port": 993,
+  "imap_user": "you@gmail.com",
+  "imap_folders": ["INBOX"],
+
+  "own_addresses": ["you@gmail.com"],
+
+  "judge": "off",
+  "judge_model": "claude-haiku-4-5-20251001",
+
+  "review_batch_size": 40,
+  "interview_round_gap_days": 10,
+  "data_dir": "data",
+
+  "_graph_only": "Used when source is 'graph' (Outlook.com / Hotmail / Microsoft 365).",
+  "client_id": "",
+  "authority": "https://login.microsoftonline.com/consumers",
+  "scopes": ["Mail.Read"],
+  "folders": ["inbox", "archive", "junkemail"]
+}
