@@ -68,6 +68,9 @@ def cmd_classify(cfg, args):
                     cand["subject"], cand.get("body", ""))
             prior["evidence"] = rules.evidence_sentence(
                 cand["subject"], cand.get("body", ""), prior["status"])
+            # The link is built by the source, so a fix to it reaches even rows
+            # whose verdict is settled.
+            prior["web_link"] = cand.get("web_link")
             continue
 
         verdict = rules.classify(cand)

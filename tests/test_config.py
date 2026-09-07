@@ -101,3 +101,28 @@ def test_naming_an_account_a_flat_config_lacks_is_an_error(tmp_path):
 
 def test_accounts_lists_names_in_file_order(tmp_path):
     assert config.accounts(write(tmp_path, MULTI)) == ["outlook", "gmail", "yahoo"]
+
+
+# --- IMAP message links -------------------------------------------------
+
+def test_gmail_link_uses_the_rfc822msgid_operator():
+    """A bare Message-ID finds nothing in Gmail: the operator is required, and
+    the id must be escaped or its @ and dots are read as separate terms."""
+    from inboxjobtracker.sources.imap import _search_link
+
+    link = _search_link("imap.gmail.com", "me@gmail.com")
+    url = link("<20260802032307.7ee22ab1cb90da81@us.greenhouse-mail.io>")
+    assert "#search/rfc822msgid%3A" in url
+    assert "%40us.greenhouse-mail.io" in url
+    assert "<" not in url and ">" not in url
+    # The account is named with ?authuser=, since /u/0 opens whichever account
+    # is first and /mail/u/<address>/ is a 404.
+    assert "?authuser=me@gmail.com#search/" in url
+    assert "/u/0/" not in url
+
+
+def test_no_link_is_guessed_for_other_providers():
+    from inboxjobtracker.sources.imap import _search_link
+
+    assert _search_link("imap.mail.yahoo.com", "me@yahoo.com")("<a@b.com>") == ""
+    assert _search_link("imap.gmail.com", "me@gmail.com")("") == ""

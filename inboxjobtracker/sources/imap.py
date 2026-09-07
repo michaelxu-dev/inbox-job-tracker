@@ -11,6 +11,7 @@ import imaplib
 import os
 import sys
 from email.header import decode_header, make_header
+from urllib.parse import quote
 
 from ..prefilter import is_candidate
 
@@ -52,11 +53,29 @@ def _body(message, limit):
     return ""
 
 
-def _search_link(host):
-    if "gmail" in (host or "").lower():
-        return lambda mid: ("https://mail.google.com/mail/u/0/#search/%s"
-                            % (mid or "").strip("<>"))
-    return lambda mid: ""
+def _search_link(host, user):
+    """A URL that opens the message in the provider's web client.
+
+    IMAP has no per-message URL, so this is a search. Gmail will not match a
+    bare Message-ID - it has to be the rfc822msgid: operator, and the id has to
+    be escaped, or the @ and dots are read as more search terms.
+
+    The mailbox is named with ?authuser=, because the obvious alternatives are
+    both wrong when more than one account is signed in: /mail/u/0/ opens
+    whichever account happens to be first, where the message does not exist,
+    and /mail/u/<address>/ is answered with a 404.
+    """
+    if "gmail" not in (host or "").lower():
+        return lambda mid: ""
+    who = "?authuser=%s" % quote(user, safe="@") if user else "u/0/"
+
+    def link(mid):
+        mid = (mid or "").strip("<>")
+        if not mid:
+            return ""
+        return ("https://mail.google.com/mail/%s#search/%s"
+                % (who, quote("rfc822msgid:" + mid, safe="")))
+    return link
 
 
 def fetch(cfg, days):
@@ -80,7 +99,7 @@ def fetch(cfg, days):
     print("Scanning the last %d days over IMAP (since %s)" % (days, since),
           file=sys.stderr)
 
-    search_link = _search_link(cfg["imap_host"])
+    search_link = _search_link(cfg["imap_host"], user)
     conn = imaplib.IMAP4_SSL(cfg["imap_host"], int(cfg.get("imap_port", 993)))
     try:
         conn.login(user, password)

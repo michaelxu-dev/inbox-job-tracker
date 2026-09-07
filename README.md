@@ -3,12 +3,22 @@
 [![tests](https://github.com/michaelxu-dev/inbox-job-tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/michaelxu-dev/inbox-job-tracker/actions/workflows/ci.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
+[![Claude Code](https://img.shields.io/badge/Claude%20Code-skill%20%2B%20subagent-D97757.svg)](#run-it-in-claude-code-recommended)
 
-**Your mailbox already knows how your job search is going. This turns it into a spreadsheet.**
+**Your mailbox already knows how your job search is going. An AI agent turns it into a
+spreadsheet.**
 
 Applied to sixty roles and lost track? `inbox-job-tracker` reads the replies sitting in your
 inbox and writes one row per application stage — who, what role, when, and what they
 actually said.
+
+It ships as a **[Claude Code](https://claude.com/claude-code) skill and subagent**, so the
+whole thing runs from one slash command and an AI reads the mail that needs judgement.
+The design is deliberately two-tier: deterministic rules settle the mail that is obvious,
+free and offline, and a model is spent only on what they cannot call — plus a rotating
+audit of what they were *confident* about, which is where classifiers are wrong in the
+ways that cost you. You can also run it with no AI at all; the rules alone still produce
+the spreadsheet.
 
 ```
 CompanyName  Position                 Status                     Sender                  Notes
@@ -90,6 +100,36 @@ every one of these — each fixture is a bug that shipped once.
 - **Nothing thrown away.** Job alerts, newsletters and recruiter spam are classified
   `Unclear` and kept out of the spreadsheet, not deleted.
 
+## Run it in Claude Code (recommended)
+
+Clone the repo, open it in [Claude Code](https://claude.com/claude-code), and type:
+
+```
+/inbox-job-tracker 30                          # the last 30 days
+/inbox-job-tracker 30 use my gmail account     # name a mailbox in plain words
+```
+
+No API key. The skill and the subagent are in the repo, so they appear the moment you
+open the folder.
+
+**Why this is the better way to run it**
+
+- **The judgement is done by an agent, not a keyword.** The subagent reads the message
+  bodies the rules could not settle and decides what each one actually means — that a
+  mail describing a hiring funnel is a receipt, not an interview invitation.
+- **Your correspondence stays out of the conversation.** The subagent
+  (`.claude/agents/`) reads the mail in its own context and returns only a summary, so
+  message bodies never enter the main transcript.
+- **It tells you which rules were wrong.** Every run reports the rows where the agent
+  overruled the rules — that list is how the classifier gets better instead of quietly
+  repeating a mistake for months.
+- **It asks you when a mail is genuinely ambiguous** instead of guessing. You know which
+  company you applied to; an unattended run does not.
+
+The skill (`.claude/skills/`) is the entry point: it takes the time range and the mailbox
+as plain arguments, runs fetch and classify, hands the reading to the subagent, and merges
+the result. Everything below still works from an ordinary terminal if you would rather.
+
 ## Setup
 
 > The commands below are written as `inbox-job-tracker`, which exists once you
@@ -159,13 +199,14 @@ inbox-job-tracker accounts            # the mailboxes this config defines
 either side of the subcommand. Pass the same `--account` to every command in a run,
 or `merge` writes into a different store than `classify` filled.
 
-## The optional LLM second opinion
+## No Claude Code? The same judgement over the API
 
 The rules are fast, free and literal. They handle most mail correctly, and everything
 they're unsure about lands in that account's `review_queue.json` rather than
 being guessed at.
 
-If you want those read properly, set an API key:
+Outside Claude Code, an API key gets those read — the same two-tier design, the same
+prompt, just billed per message instead of running in your session:
 
 ```bash
 export ANTHROPIC_API_KEY="sk-ant-..."   # then set "judge": "on" in config.json
@@ -179,30 +220,22 @@ where the expensive mistakes are. A confidently mislabelled rejection never asks
 Cost is a fraction of a cent per email on Haiku, and each mail is judged once and cached,
 so a re-run costs nothing.
 
-### Using Claude Code?
-
-Clone the repo and it comes with both, no API key needed:
-
-```
-/inbox-job-tracker          # this week's replies, or "/inbox-job-tracker 7"
-```
-
-Name a mailbox in plain words — `/inbox-job-tracker 30 use my gmail account` — and the
-skill passes `--account` through the whole run.
-
-The skill (`.claude/skills/`) is the entry point — it shows up when you type `/`,
-takes the time range as an argument, and asks you when an email is genuinely
-ambiguous. It hands the reading of message bodies to the subagent
-(`.claude/agents/`), which keeps your correspondence out of the conversation.
-
 ## How it works
 
 ```
-mailbox ──► prefilter ──► rules ──► [optional LLM] ──► applications.csv
-                            │                              ▲
-                            └────────► store.json ─────────┘
-                                    (durable; re-runs are incremental)
+mailbox ──► prefilter ──► rules ──┬──► confident verdict ───────────┐
+                                  │                                 ├──► applications.csv
+                                  └──► review queue ──► AI agent ───┘
+                                      (Claude Code, or the API)
+
+every verdict is cached in store.json — durable, so re-runs are incremental
 ```
+
+Two tiers, and the split is the whole idea. The rules are free, instant and offline, so
+they take the mail whose meaning is unambiguous. Everything else — plus a rotating sample
+of what the rules were *confident* about — goes to the agent, because a confidently
+mislabelled rejection never asks anyone. Each message is judged once and the verdict is
+cached in `store.json`, so re-runs cost nothing.
 
 The prefilter is deliberately generous: it's cheap to discard a non-HR email later and
 expensive to never see a rejection at all. `store.json` is the durable record, so a
@@ -210,8 +243,10 @@ narrower `--days` window scans less mail without discarding anything already lea
 
 ## Privacy
 
-Your mail is read locally and stays on your machine. Nothing is uploaded unless you
-switch the LLM judge on, and then only the messages queued for review. `config.json`,
+Your mail is read locally and stays on your machine. The rules run entirely offline.
+Nothing leaves the machine unless you use the AI tier, and then only the messages queued
+for review — never the whole mailbox. In Claude Code the subagent reads them in an
+isolated context, so they stay out of the main conversation. `config.json`,
 `token_cache*.json` and `data/` are all gitignored. Passwords and API keys are never read
 from the config file — only from the environment, which is why each account names its own
 variable in `password_env`.
