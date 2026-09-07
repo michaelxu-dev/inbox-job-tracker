@@ -1,6 +1,6 @@
 # Secrets and personal data - never commit
 config.json
-token_cache.json
+token_cache*.json
 .env
 
 # Your mailbox and results

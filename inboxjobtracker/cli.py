@@ -182,6 +182,22 @@ def cmd_demo(cfg, args):
     return 0
 
 
+def cmd_accounts(cfg, args):
+    names = config.accounts(args.config)
+    if not names:
+        print("%s defines no accounts block; it configures a single mailbox."
+              % args.config, file=sys.stderr)
+        return 0
+    for name in names:
+        one = config.load(args.config, name)
+        print("%-10s %-6s %-34s -> %s%s"
+              % (name, one["source"],
+                 one.get("imap_user") or one.get("client_id") or "",
+                 one["data_dir"],
+                 "   (default)" if name == cfg.get("account") else ""))
+    return 0
+
+
 COMMANDS = (
     ("run", cmd_run, "fetch, classify, and judge if enabled"),
     ("fetch", cmd_fetch, "read mail into candidates.json"),
@@ -189,6 +205,7 @@ COMMANDS = (
     ("judge", cmd_judge, "ask an LLM about the uncertain ones (needs an API key)"),
     ("merge", cmd_merge, "fold decisions.json into the store"),
     ("demo", cmd_demo, "run on synthetic emails, no mailbox needed"),
+    ("accounts", cmd_accounts, "list the mailboxes this config defines"),
 )
 
 
@@ -199,6 +216,9 @@ def main(argv=None):
     parser.add_argument("--version", action="version", version=__version__)
     parser.add_argument("-c", "--config", default="config.json",
                         help="path to config.json (default: ./config.json)")
+    parser.add_argument("-a", "--account",
+                        help="which mailbox in config.json to use (default: "
+                             "default_account, else the first one defined)")
     parser.add_argument("-d", "--days", type=int,
                         help="days of mail to scan (default: lookback_days in config). A bare number is shorthand: 'inbox-job-tracker 7'")
     # Accepted on either side of the subcommand, because both readings are
@@ -208,6 +228,8 @@ def main(argv=None):
     common.add_argument("-d", "--days", type=int, default=argparse.SUPPRESS,
                         help=argparse.SUPPRESS)
     common.add_argument("-c", "--config", default=argparse.SUPPRESS,
+                        help=argparse.SUPPRESS)
+    common.add_argument("-a", "--account", default=argparse.SUPPRESS,
                         help=argparse.SUPPRESS)
 
     sub = parser.add_subparsers(dest="command")
@@ -225,7 +247,7 @@ def main(argv=None):
     if not args.command:
         parser.print_help()
         return 0
-    return args.func(config.load(args.config), args)
+    return args.func(config.load(args.config, args.account), args)
 
 
 if __name__ == "__main__":

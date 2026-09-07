@@ -8,7 +8,16 @@ def fetch(cfg, days):
         from . import imap
         return imap.fetch(cfg, days)
     if name == "graph":
-        from . import graph
+        try:
+            from . import graph
+        except ImportError as exc:
+            # Kept out of the core install so the rules and IMAP need nothing at
+            # all; say which command fixes it rather than raising a bare
+            # ModuleNotFoundError at someone who just set source to "graph".
+            raise SystemExit(
+                'The "graph" source needs two extra packages (%s).\n'
+                '  pip install -e ".[graph]"     # or: pip install msal requests'
+                % exc.name)
         return graph.fetch(cfg, days)
     if name == "demo":
         from . import demo

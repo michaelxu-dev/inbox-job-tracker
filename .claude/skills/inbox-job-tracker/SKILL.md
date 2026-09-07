@@ -22,8 +22,12 @@ worth recognising because they arrive often:
 
 - **"just re-judge" / "don't re-fetch"** — skip step 1 and go straight to step 2.
   The queue from the last run is still in `data/review_queue.json`.
-- **"use my other mailbox" / a named config** — pass `--config <path>` to every
-  command in the run, so its `data_dir` keeps that mailbox's history separate.
+- **"use my Gmail" / "the other mailbox" / a named account** — pass
+  `--account <name>` to every command in the run. `config.json` defines the
+  mailboxes; `inbox-job-tracker accounts` lists them. Each keeps its own store in
+  `data/<account>/`, so histories never merge. With no `--account`, the config's
+  `default_account` applies. (`--config <path>` still selects a different config
+  file, which is a rarer need.)
 
 For anything else — a different mail source, turning the LLM judge on, changing
 how many mails are reviewed per run — say which setting in `config.json` controls
@@ -37,6 +41,11 @@ it and let the user decide. Do not edit their config unasked.
 inbox-job-tracker fetch --days N      # omit --days for the configured default
 inbox-job-tracker classify
 ```
+
+Add `--account <name>` to both when the user named a mailbox. **Every path below
+is inside that account's data directory** — `data/<account>/`, so
+`data/outlook/review_queue.json` for the `outlook` account. The bare `data/...`
+paths are written for a single-mailbox config.
 
 If `inbox-job-tracker` is not on PATH, use `python -m inboxjobtracker.cli` instead.
 If fetch reports missing credentials, relay its message — it names the exact
@@ -63,7 +72,9 @@ Pick the path that is available:
   judge; the prompt only needs to say:
 
   - do the **judgement pass only** — read `data/review_queue.json`, write
-    `data/decisions.json`, then run `inbox-job-tracker merge`;
+    `data/decisions.json`, then run `inbox-job-tracker merge`. Name the account's
+    directory explicitly when one is in use, and tell the agent to pass the same
+    `--account` to `merge`;
   - do **not** re-run fetch or classify, both are already done;
   - report the final row count by status, and separately every item where it
     corrected `rule_status` — that list is what says which rules still need work.

@@ -52,14 +52,26 @@ def _body(message, limit):
     return ""
 
 
+def _search_link(host):
+    if "gmail" in (host or "").lower():
+        return lambda mid: ("https://mail.google.com/mail/u/0/#search/%s"
+                            % (mid or "").strip("<>"))
+    return lambda mid: ""
+
+
 def fetch(cfg, days):
-    password = os.environ.get("IMAP_PASSWORD")
+    # Named per account, so a second IMAP mailbox does not have to overwrite
+    # the first one's password to be read.
+    var = cfg.get("password_env") or "IMAP_PASSWORD"
+    password = os.environ.get(var)
     if not password:
         sys.exit(
-            "IMAP_PASSWORD is not set.\n"
+            "%s is not set.\n"
             "Gmail: turn on 2-Step Verification, create an App Password at\n"
             "  https://myaccount.google.com/apppasswords\n"
-            "then set IMAP_USER and IMAP_PASSWORD in your environment.")
+            "Yahoo: Account Security -> Generate app password.\n"
+            "then set imap_user in the config and %s in your environment."
+            % (var, var))
     user = cfg.get("imap_user")
     if not user:
         sys.exit("Set imap_user in config.json, or IMAP_USER in the environment.")
@@ -68,6 +80,7 @@ def fetch(cfg, days):
     print("Scanning the last %d days over IMAP (since %s)" % (days, since),
           file=sys.stderr)
 
+    search_link = _search_link(cfg["imap_host"])
     conn = imaplib.IMAP4_SSL(cfg["imap_host"], int(cfg.get("imap_port", 993)))
     try:
         conn.login(user, password)
@@ -115,9 +128,9 @@ def fetch(cfg, days):
                     "preview": body[:600],
                     "body": body,
                     # IMAP has no per-message web URL; a search link is the
-                    # closest thing that still lands the reader on the mail.
-                    "web_link": "https://mail.google.com/mail/u/0/#search/%s" % (
-                        (message_id or "").strip("<>")),
+                    # closest thing that still lands the reader on the mail,
+                    # and only Gmail's is worth guessing at.
+                    "web_link": search_link(message_id),
                     "matched": reasons,
                 })
     finally:

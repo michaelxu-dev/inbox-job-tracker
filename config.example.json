@@ -1,26 +1,46 @@
 {
   "_comment": "Copy to config.json and edit. Secrets go in the environment, never here.",
 
-  "source": "imap",
+  "_accounts_note": "One file can hold several mailboxes. Settings at this level are shared by all of them; each block under 'accounts' overrides only what differs. Pick one with --account NAME, or JOBTRACKER_ACCOUNT. Delete the accounts block to configure a single mailbox the flat way (source/imap_user at this level) - that still works.",
+
+  "own_addresses": ["you@gmail.com", "you@outlook.com"],
   "lookback_days": 90,
-
-  "imap_host": "imap.gmail.com",
-  "imap_port": 993,
-  "imap_user": "you@gmail.com",
-  "imap_folders": ["INBOX"],
-
-  "own_addresses": ["you@gmail.com"],
 
   "judge": "off",
   "judge_model": "claude-haiku-4-5-20251001",
 
   "review_batch_size": 40,
   "interview_round_gap_days": 10,
-  "data_dir": "data",
 
-  "_graph_only": "Used when source is 'graph' (Outlook.com / Hotmail / Microsoft 365).",
-  "client_id": "",
-  "authority": "https://login.microsoftonline.com/consumers",
-  "scopes": ["Mail.Read"],
-  "folders": ["inbox", "archive", "junkemail"]
+  "default_account": "gmail",
+  "accounts": {
+    "gmail": {
+      "source": "imap",
+      "imap_host": "imap.gmail.com",
+      "imap_port": 993,
+      "imap_user": "you@gmail.com",
+      "imap_folders": ["INBOX"],
+      "password_env": "GMAIL_APP_PASSWORD"
+    },
+
+    "yahoo": {
+      "source": "imap",
+      "imap_host": "imap.mail.yahoo.com",
+      "imap_port": 993,
+      "imap_user": "you@yahoo.com",
+      "imap_folders": ["Inbox"],
+      "password_env": "YAHOO_APP_PASSWORD"
+    },
+
+    "outlook": {
+      "_note": "Microsoft Graph. See docs/outlook-setup.md for the app registration.",
+      "source": "graph",
+      "client_id": "",
+      "authority": "https://login.microsoftonline.com/consumers",
+      "scopes": ["Mail.Read"],
+      "folders": ["inbox", "archive", "junkemail"]
+    }
+  },
+
+  "_data_dir_note": "Each account reads and writes data/<account name> unless it sets data_dir. Setting data_dir at the shared level above would point every account at one store and merge their histories - don't."
 }

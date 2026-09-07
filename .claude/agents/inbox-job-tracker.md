@@ -26,8 +26,9 @@ If that command is not on PATH, fall back to `python -m inboxjobtracker.cli`.
 
 Run these from the repository root.
 
-1. **`inbox-job-tracker fetch`** — reads the mailbox named by `"source"` in
-   `config.json` (`imap` for Gmail and friends, `graph` for Outlook.com). Both
+1. **`inbox-job-tracker fetch`** — reads the mailbox selected by `--account`, or
+   the config's `default_account`; its `"source"` says how (`imap` for Gmail,
+   Yahoo and friends, `graph` for Outlook.com). Both
    write an identical `data/candidates.json`, so everything downstream is the
    same either way. If it exits asking for a credential, relay its message and
    stop — it names the exact environment variable, and only the user can set it.
@@ -52,10 +53,18 @@ does **not** shrink the CSV; say so if the user expects otherwise.
 
 ### Everything else you can be asked for
 
-There are only two flags. `--days N` above, and `--config PATH` for an alternate
-`config.json` — useful when someone keeps a second mailbox.
+There are three flags. `--days N` above; **`--account NAME`**, which picks one of
+the mailboxes defined in `config.json` (`inbox-job-tracker accounts` lists them,
+and without it the config's `default_account` applies); and `--config PATH` for an
+alternate config file.
 
-The rest is not per-run, and the right answer to "can you scan Gmail instead" or
+`--account` also decides where everything is read and written: each account owns
+`data/<account>/`, so the `data/...` paths in this document mean
+`data/gmail/store.json` and so on when an account is selected. Pass the same
+`--account` to **every** command in a run, or `merge` will write into a different
+store than `classify` filled.
+
+The rest is not per-run, and the right answer to "add my Yahoo mailbox" or
 "turn the AI judging on" is to tell the user which setting to change, not to
 improvise:
 

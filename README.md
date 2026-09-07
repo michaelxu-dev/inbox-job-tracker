@@ -72,7 +72,6 @@ exists because a naive version got a real email wrong:
 | "we are **unable to move forward** with your application" | invitation — it says *move forward* | **rejection** |
 | "**if we decide to move forward**, we'll be in touch" | invitation | receipt; nothing offered |
 | "successful **candidates** move on to a video interview" | invitation | a description of their process |
-| "We **regret to inform** you… terminate your employment" | rejection | a layoff letter — not an application at all |
 | "**Thank you for your interest**" + a verification link | receipt | account setup |
 | "**Reminder:** your upcoming interview" | a new interview | the one you already booked |
 
@@ -101,9 +100,8 @@ every one of these — each fixture is a bug that shipped once.
 
 ```bash
 cp config.example.json config.json     # set imap_user and own_addresses
-export IMAP_USER="you@gmail.com"
-export IMAP_PASSWORD="your-app-password"
-inbox-job-tracker run
+export GMAIL_APP_PASSWORD="your-app-password"
+inbox-job-tracker run --account gmail
 ```
 
 Gmail needs an **App Password**, not your normal one: turn on 2-Step Verification, then
@@ -116,6 +114,37 @@ Set `"source": "graph"` and follow [docs/outlook-setup.md](docs/outlook-setup.md
 free Azure app registration, about five minutes, and the guide covers the three settings
 that fail confusingly if you miss them.
 
+### More than one mailbox
+
+Applying from a personal address and a work one is normal, so `config.json` holds as many
+mailboxes as you like. Settings at the top level are shared; each block under `accounts`
+overrides only what differs:
+
+```json
+{
+  "own_addresses": ["you@gmail.com", "you@outlook.com"],
+  "default_account": "outlook",
+  "accounts": {
+    "outlook": {"source": "graph", "client_id": "..."},
+    "gmail":   {"source": "imap", "imap_user": "you@gmail.com",
+                "password_env": "GMAIL_APP_PASSWORD"}
+  }
+}
+```
+
+```bash
+inbox-job-tracker accounts                  # what this config defines
+inbox-job-tracker run --account gmail       # or JOBTRACKER_ACCOUNT=gmail
+inbox-job-tracker run                       # default_account, else the first defined
+```
+
+Each account keeps **its own store** in `data/<account name>` — and its own Graph token
+cache in `token_cache-<account name>.json` — so one mailbox's history never merges into
+another's, and each spreadsheet
+covers one inbox. `password_env` names the variable holding that account's password, so
+two IMAP mailboxes can be open at once. A config with no `accounts` block still describes
+a single mailbox the flat way, exactly as before.
+
 ### Options
 
 ```bash
@@ -123,12 +152,18 @@ inbox-job-tracker run --days 7        # just this week; the spreadsheet keeps it
 inbox-job-tracker fetch               # read mail
 inbox-job-tracker classify            # apply the rules
 inbox-job-tracker judge               # optional: ask an LLM about the uncertain ones
+inbox-job-tracker accounts            # the mailboxes this config defines
 ```
+
+`--account NAME` picks a mailbox and `--days N` a time range; both are accepted on
+either side of the subcommand. Pass the same `--account` to every command in a run,
+or `merge` writes into a different store than `classify` filled.
 
 ## The optional LLM second opinion
 
 The rules are fast, free and literal. They handle most mail correctly, and everything
-they're unsure about lands in `data/review_queue.json` rather than being guessed at.
+they're unsure about lands in that account's `review_queue.json` rather than
+being guessed at.
 
 If you want those read properly, set an API key:
 
@@ -152,6 +187,9 @@ Clone the repo and it comes with both, no API key needed:
 /inbox-job-tracker          # this week's replies, or "/inbox-job-tracker 7"
 ```
 
+Name a mailbox in plain words — `/inbox-job-tracker 30 use my gmail account` — and the
+skill passes `--account` through the whole run.
+
 The skill (`.claude/skills/`) is the entry point — it shows up when you type `/`,
 takes the time range as an argument, and asks you when an email is genuinely
 ambiguous. It hands the reading of message bodies to the subagent
@@ -174,7 +212,9 @@ narrower `--days` window scans less mail without discarding anything already lea
 
 Your mail is read locally and stays on your machine. Nothing is uploaded unless you
 switch the LLM judge on, and then only the messages queued for review. `config.json`,
-`token_cache.json` and `data/` are all gitignored.
+`token_cache*.json` and `data/` are all gitignored. Passwords and API keys are never read
+from the config file — only from the environment, which is why each account names its own
+variable in `password_env`.
 
 ## Contributing
 

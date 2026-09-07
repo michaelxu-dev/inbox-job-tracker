@@ -135,7 +135,7 @@ def test_days_is_accepted_on_either_side(argv, expected_days, monkeypatch):
         cli, "COMMANDS",
         tuple((name, lambda cfg, args: captured.setdefault("days", args.days) and 0 or 0,
                help_text) for name, _, help_text in cli.COMMANDS))
-    monkeypatch.setattr(cli.config, "load", lambda path: {})
+    monkeypatch.setattr(cli.config, "load", lambda path, account=None: {})
 
     assert cli.main(argv) == 0
     assert captured["days"] == expected_days
