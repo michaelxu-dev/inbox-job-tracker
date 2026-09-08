@@ -43,33 +43,6 @@ python -m inboxjobtracker.cli demo
 No install, no virtualenv, nothing to download — the core has zero dependencies
 and runs on any Python 3.9+.
 
-<details>
-<summary>Prefer a real command instead of <code>python -m</code>?</summary>
-
-**To just use it** — [pipx](https://pipx.pypa.io) keeps it isolated and puts the
-command on your `PATH` in one step:
-
-```bash
-pipx install .          # then: inbox-job-tracker demo
-```
-
-**To work on it** — a virtualenv, so `pytest` and an editable install stay out of
-your system Python:
-
-```bash
-python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\Activate.ps1
-pip install -e ".[dev]"
-pytest -q
-```
-
-`pip install --user` also works, but on Windows it drops the launcher in
-`%APPDATA%\Python\Python3xx\Scripts`, which is usually **not** on `PATH` — so
-`inbox-job-tracker: command not found` is the common outcome. If you hit that
-from any install method, `python -m inboxjobtracker.cli` always works from the
-repo root.
-
-</details>
-
 ---
 
 ## Quick start
@@ -267,6 +240,9 @@ inbox-job-tracker classify            # apply the rules
 inbox-job-tracker judge               # optional: ask an LLM about the uncertain ones
 inbox-job-tracker accounts            # the mailboxes this config defines
 ```
+
+Want the command on your `PATH` without managing a virtualenv?
+[pipx](https://pipx.pypa.io) does it in one step: `pipx install .`
 
 `--account NAME` picks a mailbox and `--days N` a time range; both are accepted on
 either side of the subcommand. Pass the same `--account` to every command in a run,
