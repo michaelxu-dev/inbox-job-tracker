@@ -47,20 +47,23 @@ and runs on any Python 3.9+.
 
 ## Quick start
 
-Five minutes to your first spreadsheet, using Gmail. Outlook is
-[one section further down](#outlookcom--hotmail--microsoft-365).
+Five minutes to your first spreadsheet, using Gmail in
+[Claude Code](https://claude.com/claude-code) — the way this is meant to be run, and
+the one that adds the agent's judgement. Outlook is
+[one section further down](#outlookcom--hotmail--microsoft-365), and everything here
+[works from a plain terminal](#prefer-a-terminal) too.
 
-### 1. Clone and install
+### 1. Clone it and open it in Claude Code
 
 ```bash
 git clone https://github.com/michaelxu-dev/inbox-job-tracker
 cd inbox-job-tracker
-python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\Activate.ps1
-pip install -e .
+claude
 ```
 
-The core has no dependencies. `pip install -e ".[graph]"` adds Outlook support,
-`".[dev]"` adds pytest — see [Options](#options).
+The skill and the subagent ship in the repo's `.claude/` folder, so
+`/inbox-job-tracker` appears the moment you open the directory. Nothing to install,
+no API key — the core has no dependencies and runs on any Python 3.9+.
 
 ### 2. Point it at your mailbox
 
@@ -81,18 +84,24 @@ and put it in the environment — never in the config file:
 export GMAIL_APP_PASSWORD="xxxx xxxx xxxx xxxx"   # PowerShell: $env:GMAIL_APP_PASSWORD="..."
 ```
 
+Set it in the terminal *before* you start Claude Code, so the session inherits it.
 On Windows, a variable set in the System Properties dialog does not reach a
 terminal that is already open. Start a new one.
 
 ### 4. Run it
 
-```bash
-inbox-job-tracker run --account gmail --days 60
+```
+/inbox-job-tracker 60 gmail
 ```
 
-In Claude Code, `/inbox-job-tracker 60 gmail` does the same thing and adds the
-agent's judgement — [that path is better](#run-it-in-claude-code-recommended),
-and needs no API key.
+Two arguments, both optional and in either order: how many days, and which account
+from your `config.json`. Plain words work as well — "check my job replies from the
+last month" reaches the same run.
+
+The skill fetches and classifies, hands the mail the rules could not settle to the
+subagent to read, and merges the result. It will ask you about anything genuinely
+ambiguous, and it reports the rows where the agent overruled the rules —
+[why that matters](#run-it-in-claude-code-recommended).
 
 ### 5. Read the result
 
@@ -102,6 +111,27 @@ Numbers or Sheets.
 
 Nothing is uploaded, nothing is marked as read, and nothing in your mailbox is
 changed — the connection is read-only.
+
+### Prefer a terminal?
+
+Every step works without Claude Code. Install the command once:
+
+```bash
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\Activate.ps1
+pip install -e .
+```
+
+then run steps 2 and 3 as above and finish with:
+
+```bash
+inbox-job-tracker run --account gmail --days 60
+```
+
+That gives you the rules tier — free, offline, and the bulk of the mail. The
+judgement on what it cannot call then needs
+[an API key](#no-claude-code-the-same-judgement-over-the-api).
+`pip install -e ".[graph]"` adds Outlook support, `".[dev]"` adds pytest — see
+[Options](#options).
 
 ## Why this is harder than it looks
 
@@ -133,20 +163,18 @@ every one of these — each fixture is a bug that shipped once.
 
 ## Run it in Claude Code (recommended)
 
-Clone the repo, open it in [Claude Code](https://claude.com/claude-code), and type:
+The [Quick start](#quick-start) above is this path. Every form of the command:
 
 ```
 /inbox-job-tracker              # default account, the window from config.json
 /inbox-job-tracker 30           # the last 30 days
 /inbox-job-tracker 30 gmail     # ...of the gmail mailbox
+/inbox-job-tracker gmail        # gmail, configured window
 ```
 
-Two arguments, both optional and in either order: how many days, and which account
-from your `config.json`. Plain words work as well — "the last month, use my gmail
-account" reaches the same run.
-
-No API key. The skill and the subagent are in the repo, so they appear the moment you
-open the folder.
+Plain words work as well — "the last month, use my gmail account" reaches the same
+run. No API key: the skill and the subagent are in the repo, so they appear the
+moment you open the folder.
 
 **Why this is the better way to run it**
 
@@ -164,7 +192,8 @@ open the folder.
 
 The skill (`.claude/skills/`) is the entry point: it takes the time range and the mailbox
 as plain arguments, runs fetch and classify, hands the reading to the subagent, and merges
-the result. Everything below still works from an ordinary terminal if you would rather.
+the result. Everything below still works from an ordinary terminal if you would
+rather — [see above](#prefer-a-terminal).
 
 ## Setup
 
