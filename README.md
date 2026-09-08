@@ -154,7 +154,7 @@ Both Gmail and Yahoo need an **App Password**, not your normal one:
 | | Where to get it | Host |
 |---|---|---|
 | Gmail | 2-Step Verification on, then [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords) | `imap.gmail.com` |
-| Yahoo | Account Security → Generate app password | `imap.mail.yahoo.com` |
+| Yahoo | [login.yahoo.com/account/security](https://login.yahoo.com/account/security) → Generate app password | `imap.mail.yahoo.com` |
 
 `password_env` names the environment variable each account reads, so several mailboxes
 can be open at once. Access is read-only — the tool can't send, move or delete mail, and
