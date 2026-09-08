@@ -130,5 +130,38 @@
     "expect": "Unclear",
     "why": "'application' with no hiring context at all",
     "body": "Your home owner grant application has been submitted. Confirmation Number: 2-001-018."
+  },
+  {
+    "id": "d40",
+    "folder": "inbox",
+    "from_name": "Databricks Talent Acquisition",
+    "from_address": "no-reply@recruiting.databricks.example",
+    "received": "2026-08-05T20:35:00Z",
+    "subject": "Thanks for your interest in Databricks, CHANGHONG!",
+    "expect": "Reject",
+    "why": "ack subject over a decline body; 'decision to not move forward FOR your application' is the same sentence as 'not moving forward with', and the ack rules must not outrank it",
+    "body": "Hi CHANGHONG,\n\nThank you for your application to Databricks!\n\nAfter reviewing your skills and experience, we have made the decision to not move forward for your application for the Senior Software Engineer - Backend position at this time.\n\nPlease feel free to check our careers page, we are always updating our website with new opportunities.\n\nWe appreciate your interest and wish you the best of luck in your search!\n\nWarm regards,\nDatabricks Talent Acquisition"
+  },
+  {
+    "id": "d41",
+    "folder": "inbox",
+    "from_name": "Glassdoor",
+    "from_address": "info@glassdoor.com",
+    "received": "2026-08-12T09:00:00Z",
+    "subject": "23 new openings - check for Software Engineer roles",
+    "expect": "Unclear",
+    "why": "job board advert. Glassdoor counts as an ATS platform for the prefilter, which waved every digest past the job-context gate and into the review queue",
+    "body": "Companies actively hiring near you. See new open roles this month and apply now. Interview tips that land dream roles."
+  },
+  {
+    "id": "d42",
+    "folder": "inbox",
+    "from_name": "Contoso Careers",
+    "from_address": "careers@contoso.example",
+    "received": "2026-08-14T09:00:00Z",
+    "subject": "Thank you for applying to Contoso",
+    "expect": "Acknowledge",
+    "why": "a receipt whose only reject cue is a sign-off pleasantry stays a receipt. Tightening the ack branch to outrank a weak reject score filed five real confirmations as rejections",
+    "body": "Thank you for applying to Contoso. We have received your application for the Backend Engineer role and our recruiting team will review it shortly. Unfortunately, due to the volume of interest we cannot reply to every candidate individually. We wish you the best of luck in your job search!"
   }
 ]

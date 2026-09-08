@@ -91,7 +91,12 @@ def cmd_classify(cfg, args):
         store[cand["id"]] = record
         counts[record["status"]] = counts.get(record["status"], 0) + 1
 
-        if verdict["confidence"] == "low" or not company:
+        # A missing company only matters for a row that is going to the CSV.
+        # Requiring one of every verdict queued a confident Unclear - a
+        # newsletter, an account notice - for review purely because no employer
+        # could be derived from it, which is exactly what should be expected.
+        needs_company = record["status"] in rules.CSV_STATUSES and not company
+        if verdict["confidence"] == "low" or needs_company:
             review.append(rules.review_item(
                 cand, record, verdict, company, "uncertain",
                 verdict["note"] or "no company name could be derived"))
@@ -123,6 +128,14 @@ def cmd_merge(cfg, args):
     store = store_mod.load(paths["store.json"])
     with open(paths["decisions.json"], "r", encoding="utf-8") as fh:
         decisions = json.load(fh)
+    # The evidence sentence is the one the *old* status rested on. Overturning a
+    # verdict without re-deriving it left the Notes column quoting the losing
+    # argument: an Acknowledge read off "Thanks for your interest in <company>"
+    # stayed in the notes after the mail was correctly called a rejection.
+    bodies = {}
+    if os.path.exists(paths["candidates.json"]):
+        with open(paths["candidates.json"], "r", encoding="utf-8") as fh:
+            bodies = {c["id"]: c for c in json.load(fh)["candidates"]}
     applied = 0
     for dec in decisions:
         rec = store.get(dec.get("id"))
@@ -132,12 +145,22 @@ def cmd_merge(cfg, args):
             rec["company"], rec["company_source"] = dec["company"], "agent"
         if dec.get("position"):
             rec["position"], rec["position_source"] = dec["position"], "agent"
+        was = rec.get("status")
         rec["status"] = store_mod.LEGACY_STATUS.get(dec["status"], dec["status"])
         rec["agent_status"] = rec["status"]
         rec["confidence"] = "agent"
         rec["note"] = dec.get("note", "")
         rec["decided_by"] = "agent"
         rec["audited"] = True
+        cand = bodies.get(dec["id"])
+        if cand:
+            rec["evidence"] = rules.evidence_sentence(
+                cand.get("subject"), cand.get("body"), rec["status"])
+        elif was != rec["status"]:
+            # Nothing to re-derive it from, so drop it rather than keep a
+            # sentence that argues for the overturned verdict; the CSV falls
+            # back to the note the judgement gave.
+            rec["evidence"] = None
         applied += 1
     report.assign_interview_rounds(store, int(cfg["interview_round_gap_days"]))
     store_mod.save(paths["store.json"], store)

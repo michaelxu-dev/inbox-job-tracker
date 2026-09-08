@@ -105,9 +105,14 @@ every one of these — each fixture is a bug that shipped once.
 Clone the repo, open it in [Claude Code](https://claude.com/claude-code), and type:
 
 ```
-/inbox-job-tracker 30                          # the last 30 days
-/inbox-job-tracker 30 use my gmail account     # name a mailbox in plain words
+/inbox-job-tracker              # default account, the window from config.json
+/inbox-job-tracker 30           # the last 30 days
+/inbox-job-tracker 30 gmail     # ...of the gmail mailbox
 ```
+
+Two arguments, both optional and in either order: how many days, and which account
+from your `config.json`. Plain words work as well — "the last month, use my gmail
+account" reaches the same run.
 
 No API key. The skill and the subagent are in the repo, so they appear the moment you
 open the folder.
@@ -144,9 +149,19 @@ export GMAIL_APP_PASSWORD="your-app-password"
 inbox-job-tracker run --account gmail
 ```
 
-Gmail needs an **App Password**, not your normal one: turn on 2-Step Verification, then
-create one at [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords).
-Access is read-only — the tool can't send, move or delete mail.
+Both Gmail and Yahoo need an **App Password**, not your normal one:
+
+| | Where to get it | Host |
+|---|---|---|
+| Gmail | 2-Step Verification on, then [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords) | `imap.gmail.com` |
+| Yahoo | Account Security → Generate app password | `imap.mail.yahoo.com` |
+
+`password_env` names the environment variable each account reads, so several mailboxes
+can be open at once. Access is read-only — the tool can't send, move or delete mail, and
+messages are fetched with `BODY.PEEK`, so nothing is marked as read behind you.
+
+A folder in `imap_folders` that the provider doesn't have (Gmail labels and Yahoo's
+`Bulk Mail` differ) is reported and skipped, not treated as an error.
 
 ### Outlook.com / Hotmail / Microsoft 365
 
@@ -240,6 +255,11 @@ cached in `store.json`, so re-runs cost nothing.
 The prefilter is deliberately generous: it's cheap to discard a non-HR email later and
 expensive to never see a rejection at all. `store.json` is the durable record, so a
 narrower `--days` window scans less mail without discarding anything already learned.
+
+Which is affordable because the fetch itself is two passes, on both sources. The cheap
+one reads headers and a slice of the body for everything in the window — 100 messages per
+round trip over IMAP, one page of metadata over Graph. Only what survives the prefilter is
+downloaded in full: on a real mailbox, 78 messages out of 1047.
 
 ## Privacy
 

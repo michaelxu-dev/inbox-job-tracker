@@ -1,6 +1,6 @@
 ---
 name: inbox-job-tracker
-description: Scan the mailbox for replies to job applications and update data/applications.csv. Use when asked to check job application responses, refresh the tracker, or find rejections and interview invites in email. Accepts an optional number of days to scan.
+description: Scan the mailbox for replies to job applications and update data/applications.csv. Use when asked to check job application responses, refresh the tracker, or find rejections and interview invites in email. Takes two optional arguments: the number of days to scan and the mailbox account, e.g. "60 gmail".
 ---
 
 # Check job application replies
@@ -8,30 +8,46 @@ description: Scan the mailbox for replies to job applications and update data/ap
 Reads the user's mailbox, works out what each reply means for an application, and
 writes `data/applications.csv`.
 
-## Argument
+## Arguments
 
-An optional time range. `/inbox-job-tracker 7` scans the last 7 days; with nothing
-given, `lookback_days` from `config.json` applies (90). Map whatever the user says
-onto `--days`: "this week" → 7, "this month" → 30, "since yesterday" → 1.
+Two, both optional, in either order: **a number of days** and **an account name**.
 
-A short window only scans less mail. It never shrinks the spreadsheet — the store
-is durable, so history from earlier runs stays.
+```
+/inbox-job-tracker                 # default_account, lookback_days from config (90)
+/inbox-job-tracker 60              # last 60 days, default account
+/inbox-job-tracker 60 gmail        # last 60 days of the gmail mailbox
+/inbox-job-tracker gmail           # gmail, configured lookback
+```
 
-Anything else typed after the command is an instruction, not a flag. Two are
-worth recognising because they arrive often:
+- **The number** becomes `--days N`. Words work too: "this week" → 7, "this month"
+  → 30, "since yesterday" → 1. A short window only scans less mail; it never
+  shrinks the spreadsheet, because the store is durable and history from earlier
+  runs stays.
+- **The word** is an account name from `config.json` and becomes `--account NAME`,
+  passed to **every** command in the run — `merge` included, or it writes to a
+  different store than `classify` filled. Each account keeps its own store in
+  `data/<account>/`, so histories never merge. Without one, the config's
+  `default_account` applies.
+
+Run `inbox-job-tracker accounts` to see the names. If the word given is not one of
+them, do not guess and do not fall back to the default: say which accounts exist
+and stop. Running the wrong mailbox writes a store the user did not ask for.
+
+Phrasings like "use my gmail account" or "the other mailbox" mean the same thing —
+take the account name out of the sentence.
+
+Anything else typed after the command is an instruction, not an argument. One
+arrives often:
 
 - **"just re-judge" / "don't re-fetch"** — skip step 1 and go straight to step 2.
-  The queue from the last run is still in `data/review_queue.json`.
-- **"use my Gmail" / "the other mailbox" / a named account** — pass
-  `--account <name>` to every command in the run. `config.json` defines the
-  mailboxes; `inbox-job-tracker accounts` lists them. Each keeps its own store in
-  `data/<account>/`, so histories never merge. With no `--account`, the config's
-  `default_account` applies. (`--config <path>` still selects a different config
-  file, which is a rarer need.)
+  The queue from the last run is still in the account's `review_queue.json`.
 
-For anything else — a different mail source, turning the LLM judge on, changing
-how many mails are reviewed per run — say which setting in `config.json` controls
-it and let the user decide. Do not edit their config unasked.
+`--config <path>` selects a different config file altogether, which is a rarer
+need than picking an account inside the current one.
+
+For anything else — turning the LLM judge on, changing how many mails are reviewed
+per run — say which setting in `config.json` controls it and let the user decide.
+Do not edit their config unasked.
 
 ## Steps
 

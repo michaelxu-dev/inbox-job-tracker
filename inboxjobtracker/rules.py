@@ -44,7 +44,14 @@ LEGACY_STATUS = {"Pass to next round": INTERVIEW, "Acknowledgement": ACK}
 # Weighted so an explicit decision outranks incidental wording.
 REJECT_RULES = [
     (10, r"we (regret|are sorry) to inform"),
-    (10, r"not (be )?(moving|going) forward with your (application|candidacy)"),
+    # Every part of this varies in real mail: "not moving forward with your
+    # application", "decision to not move forward for your application",
+    # "will not be going forward on your candidacy". Pinning the verb to
+    # "moving|going" and the preposition to "with" missed an outright decline
+    # and left it scoring 4 on a sign-off phrase alone.
+    (10, r"not (be )?(mov(e|es|ing)|go(es|ing)?|proceed(s|ing)?|"
+         r"continu(e|es|ing)?) forward (with|for|on|in) your "
+         r"(application|candidacy)"),
     (10, r"(decided|chosen) to (move forward|proceed|continue) with (other|another)"),
     (10, r"you (have not|were not) (been )?(selected|shortlisted|chosen)"),
     (10, r"no longer (be )?under consideration"),
@@ -52,7 +59,8 @@ REJECT_RULES = [
     (9, r"your application (was|has been) (unsuccessful|declined)"),
     (9, r"pursu\w+ other candidates"),
     (8, r"not (a|the right) (match|fit) (for|at) this time"),
-    (8, r"decided not to (proceed|move forward)"),
+    (8, r"(decided|(have |has )?(made|reached) (the|a) decision) "
+         r"(not to|to not) (proceed|move forward|continue|advance)"),
     (8, r"(unable|not able) to (move forward|proceed|continue|progress)"),
     (8, r"filled (the|this) (position|role)"),
     (6, r"keep your (resume|application|details) on file"),
@@ -201,6 +209,12 @@ def score(text, rules, guarded=False):
     return total, hits
 
 
+def heaviest(rule_table, hits):
+    """The weight of the strongest rule that fired."""
+    weights = {pattern: weight for weight, pattern in rule_table}
+    return max((weights[h] for h in hits), default=0)
+
+
 def sentence_around(text, start, end):
     """Widen a match out to the sentence holding it."""
     left = max(text.rfind(ch, 0, start) for ch in ".!?\n")
@@ -315,6 +329,25 @@ PERSONAL_MAIL_DOMAINS = {
 }
 
 
+# Job boards and aggregators advertise openings; they do not answer
+# applications. Their marketing dominates their volume by a wide margin - one
+# 60-day Gmail scan queued 21 Glassdoor digests and adverts and not one real
+# reply - and every one of them mentions jobs, so the job-context gate below
+# waves them all through. They are listed as ATS platforms for the prefilter's
+# purposes, which is right: the prefilter should be generous. Deciding is not.
+# A real decision still wins, because this gate yields to a confident score.
+JOB_BOARDS = {
+    "linkedin.com", "indeed.com", "ziprecruiter.com", "glassdoor.com",
+    "monster.com", "dice.com", "simplyhired.com", "careerbuilder.com",
+    "seek.com.au", "totaljobs.com", "reed.co.uk", "jobbank.gc.ca",
+}
+
+
+def is_job_board(address):
+    domain = (address or "").lower().rsplit("@", 1)[-1].strip("<> ")
+    return any(domain == d or domain.endswith("." + d) for d in JOB_BOARDS)
+
+
 def is_personal_mail(address):
     domain = (address or "").lower().rsplit("@", 1)[-1].strip("<> ")
     return domain in PERSONAL_MAIL_DOMAINS
@@ -338,7 +371,8 @@ def looks_job_related(cand, text):
     otherwise the text has to mention something about a job."""
     address = (cand.get("from_address") or "").lower()
     domain = address.split("@")[-1] if "@" in address else ""
-    if domain and any(domain == d or domain.endswith("." + d) for d in ATS_PLATFORMS):
+    if domain and not is_job_board(address) and any(
+            domain == d or domain.endswith("." + d) for d in ATS_PLATFORMS):
         return True
     return bool(JOB_CONTEXT.search(text))
 
@@ -558,6 +592,15 @@ def classify(cand):
     nxt, nxt_hits = score(text, NEXT_RULES, guarded=True)
     ack = looks_like_ack(text)
 
+    # A rejection needs one phrase that actually declines. The 4-and-5 weight
+    # cues are sign-off pleasantries - "unfortunately we cannot reply to every
+    # candidate", "we wish you the best in your job search" - and an ordinary
+    # acknowledgement carries both, which sums to 9 and clears the threshold
+    # for a *confident* rejection without a word of decline in the mail. So
+    # weak cues corroborate a decline; on their own they stay below the line.
+    if heaviest(REJECT_RULES, rej_hits) < 8:
+        rej = min(rej, 7)
+
     advance = advancement_kind(text)
 
     # Only when the mail carries no decision of its own. A real assessment invite
@@ -567,6 +610,14 @@ def classify(cand):
         return {
             "status": UNCLEAR, "confidence": "high",
             "note": "sent from personal webmail, not an employer or ATS",
+            "explicit_round": None, "reject_score": rej, "next_score": nxt,
+            "reject_hits": rej_hits, "next_hits": nxt_hits,
+        }
+
+    if is_job_board(cand.get("from_address")) and rej < 8 and nxt < 8:
+        return {
+            "status": UNCLEAR, "confidence": "high",
+            "note": "job board advertising openings, not a reply to an application",
             "explicit_round": None, "reject_score": rej, "next_score": nxt,
             "reject_hits": rej_hits, "next_hits": nxt_hits,
         }
@@ -619,6 +670,13 @@ def classify(cand):
     elif rej >= 8 and nxt >= 8:
         status = REJECT if rej > nxt else advance
         note = "both reject and next-round language present (%d vs %d)" % (rej, nxt)
+    # A receipt outranks a weak reject score on purpose. The 4-and-5 weight
+    # cues are sign-off pleasantries - "we wish you success in your job
+    # search", "unfortunately we cannot reply to every candidate" - and they
+    # sit at the bottom of perfectly ordinary acknowledgements. A real decline
+    # carries a decisive phrase and is settled by the rej >= 8 branch above,
+    # so nothing is lost here; promoting a weak score over the receipt just
+    # files five confirmations as rejections.
     elif ack and rej < 8 and nxt < 8:
         status, confidence, note = ACK, "high", "receipt only, no decision"
     elif rej > nxt and rej >= 4:

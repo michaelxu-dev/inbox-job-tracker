@@ -126,3 +126,112 @@ def test_no_link_is_guessed_for_other_providers():
 
     assert _search_link("imap.mail.yahoo.com", "me@yahoo.com")("<a@b.com>") == ""
     assert _search_link("imap.gmail.com", "me@gmail.com")("") == ""
+
+
+# --- IMAP two-pass fetch ------------------------------------------------
+
+class FakeIMAP:
+    """Enough of imaplib's FETCH response shape to test the parser.
+
+    A multi-part FETCH interleaves tuples and bare bytes, and only the first
+    tuple of each message carries its sequence number - which is the part that
+    is easy to get wrong.
+    """
+
+    def __init__(self, response):
+        self.response = response
+        self.asked = None
+
+    def fetch(self, nums, spec):
+        self.asked = (nums, spec)
+        return "OK", self.response
+
+
+def test_peek_groups_parts_by_message():
+    from inboxjobtracker.sources.imap import _peek
+
+    conn = FakeIMAP([
+        (b'1 (BODY[HEADER.FIELDS (SUBJECT FROM DATE MESSAGE-ID)] {30}',
+         b"Subject: One\r\nFrom: a@b.com\r\n"),
+        (b' BODY[1]<0> {9}', b"body one"),
+        b')',
+        (b'2 (BODY[HEADER.FIELDS (SUBJECT FROM DATE MESSAGE-ID)] {30}',
+         b"Subject: Two\r\nFrom: c@d.com\r\n"),
+        (b' BODY[1]<0> {9}', b"body two"),
+        b')',
+    ])
+    out = _peek(conn, [b"1", b"2"])
+
+    assert set(out) == {b"1", b"2"}
+    assert b"Subject: One" in out[b"1"]["header"]
+    assert out[b"1"]["preview"] == b"body one"
+    assert out[b"2"]["preview"] == b"body two"
+    # One request for the whole batch, not one per message: that is the point.
+    assert conn.asked[0] == b"1,2"
+    assert "BODY.PEEK[HEADER.FIELDS" in conn.asked[1]
+
+
+def test_peek_survives_a_message_with_no_body_part():
+    from inboxjobtracker.sources.imap import _peek
+
+    conn = FakeIMAP([
+        (b'7 (BODY[HEADER.FIELDS (SUBJECT)] {14}', b"Subject: Bare\r\n"),
+        b')',
+    ])
+    out = _peek(conn, [b"7"])
+    assert out[b"7"]["preview"] == b""
+
+
+def test_preview_is_decoded_enough_for_the_prefilter_to_read():
+    """The slice arrives in its transfer encoding: asking the server to decode
+    it would mean fetching the whole part, which is what this avoids."""
+    import base64 as b64
+    from inboxjobtracker.sources.imap import _decode_preview
+
+    plain = b"Thank you for applying to Northwind"
+    assert _decode_preview(plain) == plain.decode()
+
+    quoted = b"Unfortunately we are unable to move forward =\r\nwith your application"
+    assert "move forward" in _decode_preview(quoted)
+
+    encoded = b64.b64encode(b"We regret to inform you that other candidates")
+    assert "other candidates" in _decode_preview(encoded)
+
+    assert _decode_preview(b"") == ""
+    assert _decode_preview(None) == ""
+
+
+# --- HTML bodies --------------------------------------------------------
+
+def test_html_body_becomes_readable_prose():
+    """A single-part text/html mail used to reach the rules as raw markup, so
+    every pattern matched against tags and sentence_around ran a rejection into
+    the sign-off as one 'sentence'."""
+    import email as email_mod
+    from inboxjobtracker.sources.imap import _body
+
+    raw = (
+        "MIME-Version: 1.0\r\n"
+        "Content-Type: text/html; charset=utf-8\r\n\r\n"
+        "<style>.x{color:#fff;font-family:Helvetica}</style>"
+        "<div>Hi Dana,</div><div><br></div>"
+        "<div>We have made the decision to not move forward for your "
+        "application at this time.</div>"
+        "<div>We wish you the best of luck!</div>"
+    )
+    text = _body(email_mod.message_from_string(raw), 4000)
+
+    assert "<div>" not in text and "color:#fff" not in text
+    # The decline and the sign-off are separate lines, not one run-on sentence.
+    assert "not move forward for your application at this time." in text
+    assert text.splitlines()[-1] == "We wish you the best of luck!"
+
+
+def test_entities_and_block_tags_survive_stripping():
+    from inboxjobtracker.sources.imap import _html_to_text
+
+    assert _html_to_text("<p>Ren&eacute;&nbsp;&amp; Co.</p><p>Next</p>") == \
+        "René & Co.\nNext"
+    # A body that is nothing but CSS leaves nothing to read, rather than
+    # leaving the stylesheet to be classified as prose.
+    assert _html_to_text("<style>a{b:c}</style>") == ""
