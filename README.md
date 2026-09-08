@@ -53,17 +53,17 @@ the one that adds the agent's judgement. Outlook is
 [one section further down](#outlookcom--hotmail--microsoft-365), and everything here
 [works from a plain terminal](#prefer-a-terminal) too.
 
-### 1. Clone it and open it in Claude Code
+### 1. Clone it
 
 ```bash
 git clone https://github.com/michaelxu-dev/inbox-job-tracker
 cd inbox-job-tracker
-claude
 ```
 
-The skill and the subagent ship in the repo's `.claude/` folder, so
-`/inbox-job-tracker` appears the moment you open the directory. Nothing to install,
-no API key — the core has no dependencies and runs on any Python 3.9+.
+Stay in this terminal for steps 2 and 3 — Claude Code starts in step 4, and it
+inherits the environment of the shell that launches it. Nothing to install and no
+API key: the core has no dependencies and runs on any Python 3.9+, and the skill
+and subagent ship in the repo's `.claude/` folder.
 
 ### 2. Point it at your mailbox
 
@@ -84,11 +84,21 @@ and put it in the environment — never in the config file:
 export GMAIL_APP_PASSWORD="xxxx xxxx xxxx xxxx"   # PowerShell: $env:GMAIL_APP_PASSWORD="..."
 ```
 
-Set it in the terminal *before* you start Claude Code, so the session inherits it.
-On Windows, a variable set in the System Properties dialog does not reach a
-terminal that is already open. Start a new one.
+A process only sees the variables that existed when it started, which is why this
+comes before step 4. On Windows the same rule bites twice: a variable set in the
+System Properties dialog does not reach a terminal that is already open. To make it
+permanent rather than per-session, use `setx GMAIL_APP_PASSWORD "..."` and then open
+a fresh terminal.
 
-### 4. Run it
+### 4. Open it in Claude Code and run it
+
+From that same terminal:
+
+```bash
+claude
+```
+
+Then type:
 
 ```
 /inbox-job-tracker 60 gmail
@@ -102,6 +112,10 @@ The skill fetches and classifies, hands the mail the rules could not settle to t
 subagent to read, and merges the result. It will ask you about anything genuinely
 ambiguous, and it reports the rows where the agent overruled the rules —
 [why that matters](#run-it-in-claude-code-recommended).
+
+If it stops saying the password variable is missing, Claude Code was started before
+step 3. Exit it, check the variable is set (`echo $GMAIL_APP_PASSWORD`, or
+`echo $env:GMAIL_APP_PASSWORD` in PowerShell), and start it again.
 
 ### 5. Read the result
 
