@@ -178,7 +178,7 @@ overrides only what differs:
 ```json
 {
   "own_addresses": ["you@gmail.com", "you@outlook.com"],
-  "default_account": "outlook",
+  "default_account": "gmail",
   "accounts": {
     "outlook": {"source": "graph", "client_id": "..."},
     "gmail":   {"source": "imap", "imap_user": "you@gmail.com",
