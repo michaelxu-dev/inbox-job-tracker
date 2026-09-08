@@ -72,6 +72,64 @@ repo root.
 
 ---
 
+## Quick start
+
+Five minutes to your first spreadsheet, using Gmail. Outlook is
+[one section further down](#outlookcom--hotmail--microsoft-365).
+
+### 1. Clone and install
+
+```bash
+git clone https://github.com/michaelxu-dev/inbox-job-tracker
+cd inbox-job-tracker
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\Activate.ps1
+pip install -e .
+```
+
+The core has no dependencies. `pip install -e ".[graph]"` adds Outlook support,
+`".[dev]"` adds pytest — see [Options](#options).
+
+### 2. Point it at your mailbox
+
+```bash
+cp config.example.json config.json
+```
+
+Edit two things in `config.json`: your address in `own_addresses`, and
+`imap_user` in the `gmail` account. Everything else has a working default.
+
+### 3. Create an app password
+
+Your normal password will not work. Turn on 2-Step Verification, then create one
+at [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
+and put it in the environment — never in the config file:
+
+```bash
+export GMAIL_APP_PASSWORD="xxxx xxxx xxxx xxxx"   # PowerShell: $env:GMAIL_APP_PASSWORD="..."
+```
+
+On Windows, a variable set in the System Properties dialog does not reach a
+terminal that is already open. Start a new one.
+
+### 4. Run it
+
+```bash
+inbox-job-tracker run --account gmail --days 60
+```
+
+In Claude Code, `/inbox-job-tracker 60 gmail` does the same thing and adds the
+agent's judgement — [that path is better](#run-it-in-claude-code-recommended),
+and needs no API key.
+
+### 5. Read the result
+
+`data/gmail/applications.csv`, one row per employer + role + stage, with the
+sentence each verdict rests on and a link back to the message. Open it in Excel,
+Numbers or Sheets.
+
+Nothing is uploaded, nothing is marked as read, and nothing in your mailbox is
+changed — the connection is read-only.
+
 ## Why this is harder than it looks
 
 A rejection and an invitation are written in nearly the same words. Every rule below
@@ -260,6 +318,48 @@ Which is affordable because the fetch itself is two passes, on both sources. The
 one reads headers and a slice of the body for everything in the window — 100 messages per
 round trip over IMAP, one page of metadata over Graph. Only what survives the prefilter is
 downloaded in full: on a real mailbox, 78 messages out of 1047.
+
+## File structure
+
+```
+inbox-job-tracker/
+├── config.example.json          # copy to config.json - mailboxes, window, thresholds
+├── pyproject.toml               # packaging, the inbox-job-tracker command, optional extras
+│
+├── inboxjobtracker/             # the package
+│   ├── cli.py                   # run | fetch | classify | judge | merge | demo | accounts
+│   ├── config.py                # config + accounts resolution; each account owns data/<name>
+│   ├── prefilter.py             # is this mail job-related at all? deliberately generous
+│   ├── rules.py                 # the classifier: reject vs receipt vs invitation, and why
+│   ├── report.py                # store -> applications.csv, one row per stage
+│   ├── store.py                 # the durable record; makes re-runs incremental
+│   ├── judge.py                 # optional LLM second opinion over the API
+│   ├── graph_auth.py            # Microsoft OAuth device-code flow (MSAL)
+│   └── sources/                 # interchangeable mailboxes: same fetch(cfg, days) contract
+│       ├── imap.py              # Gmail, Yahoo, Fastmail - app password, two-pass fetch
+│       ├── graph.py             # Outlook.com / Microsoft 365
+│       └── demo.py              # synthetic mailbox, no credentials needed
+│
+├── .claude/                     # ships with the repo; appears when you open it in Claude Code
+│   ├── skills/inbox-job-tracker/SKILL.md    # the /inbox-job-tracker command
+│   └── agents/inbox-job-tracker.md          # the subagent that reads the queued mail
+│
+├── tests/
+│   ├── fixtures/emails.json     # every email the classifier once got wrong
+│   ├── test_rules.py            # ...and what it must say about each one
+│   └── test_config.py           # accounts, per-account stores, IMAP fetch and links
+│
+├── docs/outlook-setup.md        # the Azure app registration, five minutes
+└── data/                        # created on first run, gitignored - your mail lives here
+    └── <account>/               # candidates.json, store.json, review_queue.json,
+                                 # decisions.json, applications.csv
+```
+
+Two files are worth knowing by name. `data/<account>/store.json` is the durable
+record — everything else in `data/` is regenerated from it, which is why the CSV
+should never be hand-edited. And `tests/fixtures/emails.json` is the project's
+memory: each entry is a real misclassification, with what it should say and why,
+so the same bug cannot come back.
 
 ## Privacy
 
