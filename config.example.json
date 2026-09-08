@@ -38,7 +38,7 @@
       "client_id": "",
       "authority": "https://login.microsoftonline.com/consumers",
       "scopes": ["Mail.Read"],
-      "folders": ["inbox", "archive", "junkemail"]
+      "folders": ["inbox"]
     }
   },
 
