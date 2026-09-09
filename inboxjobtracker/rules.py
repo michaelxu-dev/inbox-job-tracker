@@ -112,7 +112,13 @@ INTERVIEW_RULES = [
 ]
 # Explicit wording beats chronological order and resets the counter.
 ROUND_CUES = [
-    (3, r"\b(final (round|interview|stage)|third (round|interview)|on-?site)\b"),
+    # "onsite" alone is a work arrangement, not a round: a contract posting
+    # saying "hybrid, 3 days onsite at our client's office" was read as a final
+    # round, and the reader's only interview with that employer became a third.
+    # It counts when it is the interview that is onsite.
+    (3, r"\b(final (round|interview|stage)|third (round|interview)|"
+        r"on-?site (interview|round|loop|visit)|"
+        r"interview on-?site)\b"),
     # "next round"/"next stage" is NOT a round-2 cue: "we'd like to invite you to
     # the next stage of the interview process" is how a first interview is
     # offered. Only wording that names the round counts.
@@ -125,19 +131,55 @@ ROUND_CUES = [
 # with your application") or inside a hypothetical in a plain receipt ("if we
 # decide to move forward with your application"). Only the run-up tells them
 # apart, so a hit preceded by one of these cues in the same sentence is dropped.
-# Both stay narrow on purpose: a bare "not"/"if" would also kill real
-# invitations ("do not hesitate to schedule a call", "if you are available").
+# The cues stay narrow on purpose - a bare "not"/"if" would also kill real
+# invitations ("do not hesitate to schedule a call", "if you are available") -
+# but the reach is the whole sentence. It used to be the preceding 40
+# characters, and "If your application is a good fit for the position, one of
+# our team members will contact you to schedule a call" puts 96 between the
+# condition and the advancement, so that receipt was published as a first
+# interview.
 NEGATION_CUE = re.compile(
     r"\b(unable|not able|cannot|can'?t|won'?t|will not|"
     r"regret|declin\w+|unsuccessful|no longer|not (be )?(moving|going|proceeding)|"
     r"not to)\b"
-    r"[^.!?;]{0,40}$", re.I,
+    r"[^.!?;\n]*$", re.I,
 )
 CONDITIONAL_CUE = re.compile(
     r"\b(if|should|when|once)\s+(we|the (team|recruiter|hiring team)|your application)\b"
-    r"[^.!?;]{0,40}$"
-    r"|\bif you (are|were) (selected|chosen|shortlisted)\b[^.!?;]{0,40}$"
-    r"|\bin the event\b[^.!?;]{0,40}$", re.I,
+    r"[^.!?;\n]*$"
+    r"|\bif you (are|were) (selected|chosen|shortlisted)\b[^.!?;\n]*$"
+    # The subject of the condition is often dropped or stands in for the
+    # application: "If selected, you can expect to hear from us to schedule an
+    # initial interview", "If it aligns with what we're looking for, we'll
+    # reach out to schedule an interview". Both were read as invitations.
+    r"|\bif (selected|chosen|shortlisted|successful|there (is|s)? (a )?(match|fit))\b"
+    r"[^.!?;\n]*$"
+    r"|\bif (it|this|that|your (background|experience|profile|skills|"
+    r"qualifications|resum[eé]|cv))\b[^.!?;\n]*$"
+    # A condition about what the reader might observe, rather than about their
+    # candidacy: "If you see the job moved to an inactive state, that means the
+    # position is no longer open, you withdrew, or you were not selected." That
+    # is a legend for a dashboard, and it rejected nobody. Kept to observing and
+    # to the job's own state, so "if you are available Thursday" is untouched.
+    r"|\bif (you (see|notice|find|do not hear|don'?t hear|have not heard|"
+    r"haven'?t heard)|the (job|position|role|req\w*|status|posting)\s+"
+    r"(is|was|has been|moves?|moved|becomes?|appears?))\b[^.!?;\n]*$"
+    r"|\bin the event\b[^.!?;\n]*$", re.I,
+)
+# An advancement named as what has *not* happened yet is a request for
+# paperwork, not an offer: "I need a few items from you before I can move
+# forward with your application" is an agency asking for references. The
+# advancement is the thing being withheld until the reader acts.
+# "Best wishes for your next steps" is a sign-off. It closes rejections and, in
+# the mail that made this rule, a government satisfaction survey - which was
+# published as a first interview on the strength of that farewell alone.
+VALEDICTION_CUE = re.compile(
+    r"\b(best wishes|wish(ing)? you|good luck|all the best|"
+    r"every success|the best)\b[^.!?;\n]*$", re.I,
+)
+PRECONDITION_CUE = re.compile(
+    r"\b(before|until|in order (for us )?to|so that (we|i) can|"
+    r"pending)\b[^.!?;\n]*$", re.I,
 )
 # An advancement described about candidates in general is the company explaining
 # its process, not an offer: "successful candidates move on to a video
@@ -145,7 +187,7 @@ CONDITIONAL_CUE = re.compile(
 # reader. "other candidates" is already a rejection cue and is left alone.
 GENERIC_SUBJECT_CUE = re.compile(
     r"\b(successful|shortlisted|selected|qualified|suitable)?\s*candidates\b"
-    r"[^.!?;]{0,40}$", re.I,
+    r"[^.!?;\n]*$", re.I,
 )
 
 # Pure auto-acknowledgements: a response, but not a decision either way.
@@ -191,17 +233,35 @@ NAME_NOISE = re.compile(
 )
 
 
-def score(text, rules, guarded=False):
+ADVANCEMENT_CUES = (NEGATION_CUE, CONDITIONAL_CUE, GENERIC_SUBJECT_CUE,
+                    PRECONDITION_CUE, VALEDICTION_CUE)
+# A rejection is a negation and ends in a farewell, so those two cues cannot be
+# applied to it - they are what it is made of. What still holds is that a
+# hypothetical rejection rejects nobody: "If you see the job moved to an
+# inactive state, that means the position is no longer open, you withdrew, or
+# you were not selected" explains a dashboard. It is the one sentence in an
+# acknowledgement that reads like a decision, and it was read as one.
+REJECT_CUES = (CONDITIONAL_CUE, GENERIC_SUBJECT_CUE)
+
+
+def discounted(before, cues=ADVANCEMENT_CUES):
+    """True when the run-up to a match takes it back: a negation, a
+    hypothetical, a description of other candidates, a precondition the reader
+    has still to meet, or a parting good wish."""
+    return any(cue.search(before) for cue in cues)
+
+
+def score(text, rules, guarded=False, cues=ADVANCEMENT_CUES):
     """Sum the weights of every rule that fires. With `guarded`, a match whose
     run-up is a negation or a hypothetical does not count — one unguarded
-    occurrence anywhere in the text is still enough to score the rule."""
+    occurrence anywhere in the text is still enough to score the rule. `cues`
+    says which run-ups count, because what discounts an advancement is not what
+    discounts a rejection."""
     total, hits = 0, []
     for weight, pattern in rules:
         for m in re.finditer(pattern, text, re.I):
             before = text[:m.start()]
-            if guarded and (NEGATION_CUE.search(before)
-                            or CONDITIONAL_CUE.search(before)
-                            or GENERIC_SUBJECT_CUE.search(before)):
+            if guarded and discounted(before, cues):
                 continue
             total += weight
             hits.append(pattern)
@@ -242,10 +302,10 @@ def evidence_sentence(subject, body, status):
         for m in re.finditer(pattern, text, re.I):
             before = text[:m.start()]
             # Same guard as scoring, so Notes never quotes a sentence that was
-            # discounted as negated or hypothetical.
-            if status != REJECT and (NEGATION_CUE.search(before)
-                                     or GENERIC_SUBJECT_CUE.search(before)
-                                   or CONDITIONAL_CUE.search(before)):
+            # discounted as hypothetical - including for a rejection, whose
+            # own quote used to be exempt and so could cite the dashboard
+            # sentence that never rejected anyone.
+            if discounted(before, REJECT_CUES if status == REJECT else ADVANCEMENT_CUES):
                 continue
             best = (weight, sentence_around(text, m.start(), m.end()))
             break
@@ -497,10 +557,41 @@ def name_key(name):
     return re.sub(r"[^a-z0-9]", "", name.casefold())
 
 
+# Where an ATS breaks a title into parts: "Senior Backend Engineer, AMER -
+# Evergreen". A bare hyphen is not a separator ("Full-Stack"), only a spaced one.
+POSITION_SEPARATOR = re.compile(r"\s*[,|·]\s*|\s+[-–—]\s+|\s*[()\[\]]\s*")
+
+# Decoration an ATS appends to a title: the region the requisition is posted in,
+# the always-open "evergreen" pipeline, the work arrangement, the employment
+# type, a requisition number. The same application carries different ones in its
+# acknowledgement, its interview invitation and its rejection, so folding on the
+# raw string files one application under three roles.
+POSITION_NOISE = re.compile(
+    r"(amer|emea|apac|latam|noram|north america|united states|us|usa|canada|uk|"
+    r"remote|hybrid|on-?site|in-?office|work from home|"
+    r"evergreen( requisition| pipeline)?|"
+    r"full[- ]?time|part[- ]?time|permanent|contract(or)?|temporary|"
+    r"req(uisition)?[.:#\s]*\d+|#?\d{3,})")
+
+
+def strip_position_noise(position):
+    """Drop the trailing decoration, keeping everything that names the job.
+
+    Only whole trailing segments go, and only ones made entirely of decoration —
+    'Senior Security Engineer, AI Security' is a specialism, not a region, and
+    stays. The first segment is always the title, so it is never dropped.
+    """
+    parts = [p.strip() for p in POSITION_SEPARATOR.split(position or "") if p and p.strip()]
+    while len(parts) > 1 and POSITION_NOISE.fullmatch(parts[-1].casefold()):
+        parts.pop()
+    return ", ".join(parts)
+
+
 def position_key(position):
     """Fold spellings of the same title: 'Sr Software Developer' and
-    'Senior Software Developer' are one role, not two."""
-    key = position.casefold()
+    'Senior Software Developer' are one role, not two — and so are
+    'Senior Backend Engineer' and 'Senior Backend Engineer, AMER - Evergreen'."""
+    key = strip_position_noise(position).casefold()
     key = re.sub(r"\bsr\.?\b", "senior", key)
     key = re.sub(r"\bjr\.?\b", "junior", key)
     return re.sub(r"[^a-z0-9]", "", key)
@@ -588,7 +679,7 @@ def local_date(iso_utc):
 
 def classify(cand):
     text = "%s\n%s" % (cand.get("subject", ""), cand.get("body") or cand.get("preview", ""))
-    rej, rej_hits = score(text, REJECT_RULES)
+    rej, rej_hits = score(text, REJECT_RULES, guarded=True, cues=REJECT_CUES)
     nxt, nxt_hits = score(text, NEXT_RULES, guarded=True)
     ack = looks_like_ack(text)
 

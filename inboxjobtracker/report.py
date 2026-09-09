@@ -4,10 +4,12 @@ One row per employer + role + status: an application reaches each stage once, so
 a resent rejection or an assessment announced and then issued collapse to the
 earliest mail, which is when that stage was actually reached.
 """
+import collections
 import csv
 import datetime as dt
 import json
 import re
+import sys
 
 from .rules import (ACK, ATS_DOMAINS, backfill_positions, name_key,
                     position_key, CSV_STATUSES, INTERVIEW, INTERVIEW_ROUNDS,
@@ -58,7 +60,14 @@ def assign_interview_rounds(store, gap_days=10):
             stated = row.get("explicit_round")
             key = thread_key(row.get("subject"))
             if stated:
-                count, round_start = stated, date
+                # A stated round is trusted, but not past the end of the
+                # history: you cannot be invited to a third interview having
+                # been invited to none. A contract posting advertising "3 days
+                # onsite" once made a single interview a third one, and the row
+                # named two earlier rounds that never happened. Capping at the
+                # next round keeps a real "final round" ordinal while making the
+                # impossible one unrepresentable.
+                count, round_start = min(stated, count + 1), date
             elif row.get("agent_status") in INTERVIEW_ROUNDS:
                 # Only an ordinal the agent set deliberately is authoritative.
                 # The one this function writes is stored too, and reading that
@@ -115,6 +124,34 @@ def canonical_names(store):
     return {key: name for key, (_, name) in best.items()}
 
 
+def resolve_company(row, canon, by_domain):
+    """The name this mail's employer is filed under, however the mail spelled it."""
+    name = row.get("company") or "Unknown"
+    address = (row.get("from_address") or "").lower()
+    domain = SUBDOMAIN_NOISE.sub("", address.split("@")[-1]) if "@" in address else ""
+    return by_domain.get(domain) or canon.get(name_key(name), name)
+
+
+def canonical_positions(store, canon, by_domain):
+    """One role's title, spelled the plainest way it was seen.
+
+    The mails of a single application disagree about the decoration — the
+    acknowledgement says "Senior Backend Engineer, AMER", the rejection just
+    "Senior Backend Engineer". They are one role now that `position_key` folds
+    them, so the rows must also read as one: take the variant seen most often,
+    and the shortest of those, since decoration only ever adds.
+    """
+    counts = {}
+    for row in store.values():
+        position = row.get("position")
+        if not position:
+            continue
+        key = (name_key(resolve_company(row, canon, by_domain)), position_key(position))
+        counts.setdefault(key, collections.Counter())[position] += 1
+    return {key: min(seen.items(), key=lambda kv: (-kv[1], len(kv[0]), kv[0]))[0]
+            for key, seen in counts.items()}
+
+
 def warn_out_of_sequence(chosen):
     """An application runs acknowledge -> test/interview -> reject. A history
     that runs backwards means a mail is in the wrong stage, or two applications
@@ -144,6 +181,7 @@ def select_rows(store, cutoff=None):
     canon = canonical_names(store)
     by_domain = canonical_by_domain(store)
     fallback = backfill_positions(store)
+    canon_position = canonical_positions(store, canon, by_domain)
 
     # One row per employer + role + date, so an application keeps its history:
     # a first interview in August and a Reject in September are both kept, while
@@ -156,13 +194,11 @@ def select_rows(store, cutoff=None):
             continue
         if cutoff and row["date"] < cutoff:
             continue
-        name = row["company"] or "Unknown"
-        address = (row.get("from_address") or "").lower()
-        domain = SUBDOMAIN_NOISE.sub("", address.split("@")[-1]) if "@" in address else ""
-        name = by_domain.get(domain) or canon.get(name_key(name), name)
+        name = resolve_company(row, canon, by_domain)
         # Presentation only — the store keeps a real null so a later run can
         # still backfill a title once one turns up in other mail.
         position = row.get("position") or fallback.get(name_key(name)) or "Unknown"
+        position = canon_position.get((name_key(name), position_key(position)), position)
         # One row per employer + role + status. An application reaches each
         # stage once: a single receipt, one assessment invite, one first-round
         # invite, one rejection. Repeats are the same event mailed twice — a

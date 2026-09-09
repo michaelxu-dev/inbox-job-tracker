@@ -163,5 +163,71 @@
     "expect": "Acknowledge",
     "why": "a receipt whose only reject cue is a sign-off pleasantry stays a receipt. Tightening the ack branch to outrank a weak reject score filed five real confirmations as rejections",
     "body": "Thank you for applying to Contoso. We have received your application for the Backend Engineer role and our recruiting team will review it shortly. Unfortunately, due to the volume of interest we cannot reply to every candidate individually. We wish you the best of luck in your job search!"
+  },
+  {
+    "id": "d43",
+    "folder": "inbox",
+    "from_name": "Contoso Talent Team",
+    "from_address": "no-reply@us.greenhouse-mail.io",
+    "received": "2026-08-10T09:00:00Z",
+    "subject": "Thank you for applying to Contoso",
+    "expect": "Acknowledge",
+    "why": "a receipt, not an invitation: the call is offered only if the application is a good fit. The condition and the advancement are 96 characters apart, and the guard used to reach back only 40, so this was published as a first interview",
+    "body": "Hi Alex,\n\nThank you for your application!\n\nWhat happens next?\n\nA member of our Talent Team will review your application as soon as possible.\n\nIf your application is a good fit for the position, one of our team members will contact you to schedule a call.\n\nThank you,\nThe Contoso Talent Team"
+  },
+  {
+    "id": "d44",
+    "folder": "inbox",
+    "from_name": "Northwind Robotics",
+    "from_address": "careers@northwind-robotics.com",
+    "received": "2026-08-12T09:00:00Z",
+    "subject": "We received your application",
+    "expect": "Acknowledge",
+    "why": "'If it aligns' drops the subject of the condition, so the conditional cue missed it and the promise to 'reach out to schedule an interview' scored as an offer. They rejected the applicant six days later",
+    "body": "Hi Alex,\n\nWe have your application and we're looking forward to reviewing it in detail. If it aligns with what we're looking for, we'll reach out to schedule an interview.\n\nThanks,\nThe Northwind Team"
+  },
+  {
+    "id": "d45",
+    "folder": "inbox",
+    "from_name": "Fabrikam Careers",
+    "from_address": "careers@fabrikam.com",
+    "received": "2026-08-14T09:00:00Z",
+    "subject": "Thanks for your interest in Fabrikam",
+    "expect": "Acknowledge",
+    "why": "'If selected' with no subject at all; the passive condition promises nothing, but 'schedule an initial interview' scored 10",
+    "body": "Hello Alex,\n\nThanks for your interest in Fabrikam. We're currently reviewing all applications. If selected, you can expect to hear from us to schedule an initial interview.\n\nBest,\nFabrikam Talent"
+  },
+  {
+    "id": "d46",
+    "folder": "inbox",
+    "from_name": "Sally at an agency",
+    "from_address": "recruiter@agency-example.com",
+    "received": "2026-09-08T09:00:00Z",
+    "subject": "Bid Form-Intermediate AI Engineer-Contoso",
+    "expect": "Unclear",
+    "why": "an agency asking for references and a rate before it submits the candidate. 'before I can move forward with your application' is the advancement being withheld, and '3 days onsite' is a work arrangement - together they made this a third interview with no first or second",
+    "body": "Hi Alex,\n\nIt was nice speaking with you today! I will need a few items from you before I can move forward with your application.\n\n* Please complete the RefAssured request (sent separately, this step is important as there's a strong chance for an interview)\n* Please confirm your rate\n\nThis is a 12-month contract position. This position is hybrid with 3 days onsite at our client's office.\n\nBest Regards,\nSally"
+  },
+  {
+    "id": "d47",
+    "folder": "inbox",
+    "from_name": "Provincial Employment Survey",
+    "from_address": "noreply-survey@example.gov",
+    "received": "2026-08-08T09:00:00Z",
+    "subject": "Alex, help us make our service better",
+    "expect": "Unclear",
+    "why": "a customer satisfaction survey. It scored as an interview invitation on the sign-off 'Best wishes for your next steps' alone",
+    "body": "Hello Alex,\n\nWelcome! We can help you to get a good job. Please tell us about your experience by answering this survey.\n\n* It takes two minutes.\n* There are only a few questions.\n\nBest wishes for your next steps,\nYour Employment Services Team"
+  },
+  {
+    "id": "d48",
+    "folder": "inbox",
+    "from_name": "Contoso Recruiting",
+    "from_address": "donotreply@email.careers.contoso.com",
+    "received": "2026-07-31T09:00:00Z",
+    "subject": "Thank you for your application!",
+    "expect": "Acknowledge",
+    "why": "a receipt whose only decision-shaped sentence is a legend for the careers dashboard: 'if you see the job moved to an inactive state, that means ... you were not selected'. Reject scoring was unguarded, so that hypothetical scored 10 and published a rejection that never happened",
+    "body": "Hi Alex,\n\nThank you for taking the time to submit your application for Senior Software Engineer - Data Integration (Job number: 200036142). We're glad you're interested in a career at Contoso.\n\nYou may not receive feedback from us on your application directly, but please know that it's being evaluated, and you'll hear from us as soon as the review process is complete. If you're selected for an interview, you'll be notified by the recruiting team.\n\nUpdates regarding your application status can be viewed through your Action Center. If you see the job moved to an inactive state, that means the position is either no longer open, you withdrew from consideration, or you were not selected for the role.\n\nThank you,\nContoso Recruiting"
   }
 ]

@@ -29,6 +29,10 @@ DEFAULTS = {
     "folders": ["inbox", "archive", "junkemail"],
     "own_addresses": [],
     "review_batch_size": 40,
+    # Share of each batch held back for confident verdicts. Without a reserved
+    # share the uncertain items fill the batch every run and nothing confident
+    # is ever checked - which is the half where the costly mistakes live.
+    "audit_share": 0.25,
     "interview_round_gap_days": 10,
     "max_body_chars": 4000,
     "judge": "off",

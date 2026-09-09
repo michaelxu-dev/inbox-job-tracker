@@ -27,6 +27,34 @@ def cmd_fetch(cfg, args):
     return 0
 
 
+# What it costs to have been wrong about a verdict nobody checked. An invented
+# interview or a missed rejection changes what the reader believes about a real
+# application; a receipt read as a receipt does not.
+AUDIT_PRIORITY = {status: 0 for status in rules.INTERVIEW_ROUNDS}
+AUDIT_PRIORITY.update({rules.INTERVIEW: 0, rules.TEST: 1, rules.REJECT: 2,
+                       rules.ACK: 3})
+
+
+def build_queue(review, audit, batch_size, audit_share):
+    """Fill one review batch from both tiers, keeping a share for the audit.
+
+    Concatenating the two and truncating starved the audit completely: there are
+    always more uncertain items than a batch holds, so the confident verdicts
+    sat at the back of the list and were never once reviewed. That is the wrong
+    half to skip - the rules ask for help when they are unsure, and say nothing
+    when they are confidently wrong. So the audit gets a reserved share, and
+    each tier may take what the other leaves unused.
+    """
+    batch_size = max(0, batch_size)
+    reserved = min(len(audit), max(1, round(batch_size * audit_share)) if audit else 0)
+    chosen_review = review[:batch_size - reserved]
+    # Riskiest verdicts first, so a small audit share is spent where being
+    # wrong costs most rather than on acknowledgements.
+    audit = sorted(audit, key=lambda item: AUDIT_PRIORITY.get(item.get("rule_status"), 9))
+    chosen_audit = audit[:batch_size - len(chosen_review)]
+    return chosen_review + chosen_audit
+
+
 def cmd_classify(cfg, args):
     paths = _paths(cfg)
     if not os.path.exists(paths["candidates.json"]):
@@ -107,7 +135,8 @@ def cmd_classify(cfg, args):
                 cand, record, verdict, company, "audit",
                 "confident rule verdict, never checked"))
 
-    queue = (review + audit)[:int(cfg["review_batch_size"])]
+    queue = build_queue(review, audit, int(cfg["review_batch_size"]),
+                        float(cfg.get("audit_share", 0.25)))
     report.assign_interview_rounds(store, int(cfg["interview_round_gap_days"]))
     store_mod.save(paths["store.json"], store)
     with open(paths["review_queue.json"], "w", encoding="utf-8") as fh:
