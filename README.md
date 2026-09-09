@@ -1,11 +1,12 @@
 # inbox-job-tracker
 
+**An AI agent that reads your job-application email and fills in the spreadsheet** —
+a rule engine for speed, the agent for judgement.
+
 [![tests](https://github.com/michaelxu-dev/inbox-job-tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/michaelxu-dev/inbox-job-tracker/actions/workflows/ci.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-skill%20%2B%20subagent-D97757.svg)](#run-it-in-claude-code-recommended)
-
-**Let an AI agent read your job-application replies and fill in the spreadsheet.**
 
 Applied to sixty roles and lost track? Point it at your mailbox. It reads the replies
 already sitting there and writes one row per application stage — who, what role, when,
@@ -319,12 +320,32 @@ so a re-run costs nothing.
 ## How it works
 
 ```
-mailbox ──► prefilter ──► rules ──┬──► confident verdict ───────────┐
-                                  │                                 ├──► applications.csv
-                                  └──► review queue ──► AI agent ───┘
-                                      (Claude Code, or the API)
+   mailbox
+      │
+      ▼
+   prefilter ─────────────────────────────────────► not job mail, dropped
+      │
+      ▼
+ ┌──────────────────────────────────────────────────────────────┐
+ │ TIER 1 · the rule engine          free · instant · offline   │
+ │ settles the mail whose meaning is unambiguous                │
+ └───────────────┬───────────────────────────┬──────────────────┘
+                 │                           │ cannot call it —
+       confident │                           │ or WAS confident and
+        verdict  │                           │ drew the audit sample
+                 │                           ▼
+                     ╔═════════════════════════════════════════════╗
+                     ║ TIER 2 · THE AI AGENT                       ║
+                     ║ reads the body, decides what it means,      ║
+                     ║ and reports which rules it had to overrule  ║
+                     ║ — a Claude Code subagent, or the API        ║
+                     ╚═══════════════════════╤═════════════════════╝
+                 │                           │
+                 └─────────────┬─────────────┘
+                               ▼
+                       applications.csv
 
-every verdict is cached in store.json — durable, so re-runs are incremental
+ every verdict is cached in store.json — durable, so re-runs are incremental
 ```
 
 The diagram is the design. The rules are free, instant and offline, so they take the mail
