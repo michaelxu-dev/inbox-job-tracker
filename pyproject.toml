@@ -1,12 +1,13 @@
 [project]
 name = "inbox-job-tracker"
 version = "0.1.0"
-description = "Turn job-application replies in your mailbox into a spreadsheet you can actually read."
+description = "An AI agent that reads the job-application replies in your mailbox and writes the spreadsheet. Ships as a Claude Code skill and subagent."
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
 authors = [{ name = "Michael Xu" }]
-keywords = ["job-search", "email", "imap", "gmail", "outlook", "job-applications", "ats"]
+keywords = ["ai-agent", "claude", "claude-code", "llm", "job-search", "email",
+            "imap", "gmail", "outlook", "job-applications", "ats"]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Environment :: Console",

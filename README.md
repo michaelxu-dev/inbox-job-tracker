@@ -5,20 +5,14 @@
 [![python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-skill%20%2B%20subagent-D97757.svg)](#run-it-in-claude-code-recommended)
 
-**Your mailbox already knows how your job search is going. An AI agent turns it into a
-spreadsheet.**
+**Let an AI agent read your job-application replies and fill in the spreadsheet.**
 
-Applied to sixty roles and lost track? `inbox-job-tracker` reads the replies sitting in your
-inbox and writes one row per application stage — who, what role, when, and what they
-actually said.
+Applied to sixty roles and lost track? Point it at your mailbox. It reads the replies
+already sitting there and writes one row per application stage — who, what role, when,
+and the sentence they actually said it in.
 
-It ships as a **[Claude Code](https://claude.com/claude-code) skill and subagent**, so the
-whole thing runs from one slash command and an AI reads the mail that needs judgement.
-The design is deliberately two-tier: deterministic rules settle the mail that is obvious,
-free and offline, and a model is spent only on what they cannot call — plus a rotating
-audit of what they were *confident* about, which is where classifiers are wrong in the
-ways that cost you. You can also run it with no AI at all; the rules alone still produce
-the spreadsheet.
+It ships as a **[Claude Code](https://claude.com/claude-code) skill and subagent**: one
+slash command, no API key, and an agent that reads the mail rather than grepping it.
 
 ```
 CompanyName  Position                 Status                     Sender                  Notes
@@ -32,6 +26,33 @@ Fabrikam     Senior Data Engineer     Invite to test             no-reply@greenh
 
 *(That is real output — it is exactly what `demo` below prints. Dates and the
 Web Link column are trimmed here for width.)*
+
+## Storing the row is easy. Reading the email is not
+
+Every tracker can hold a spreadsheet. The work is deciding what a message *means* —
+and a rejection and an invitation are written in nearly the same words. Each line
+below is a real email that a keyword search reads backwards:
+
+| The email says | Read literally | What it actually is |
+|---|---|---|
+| "we are **unable to move forward** with your application" | invitation — it says *move forward* | **rejection** |
+| "If your application is a good fit, one of our team members will contact you to **schedule a call**" | first interview | **receipt** — nothing was offered |
+| "if you see the job moved to an inactive state, that means … **you were not selected**" | rejection | **receipt** — that is a legend for a dashboard |
+| "successful **candidates** move on to a video interview" | invitation | a description of their process |
+| "I need a few items from you **before I can move forward**" | invitation | an agency asking for references |
+| "**Reminder:** your upcoming interview" | a new interview | the one you already booked |
+
+So the classifier reads context, not keywords: an advancement phrase preceded by a
+negation, a hypothetical, a precondition or a third-person subject does not count.
+Each row above is pinned by a fixture in `tests/` — every one of them shipped wrong
+once.
+
+And that is only the half a rule can be taught. The rest is judgement, and that is
+what the agent is for: it reads the bodies the rules could not settle, decides what
+each one means, and reports which rules it had to overrule — plus a rotating audit
+of what they were *confident* about, because a confidently mislabelled rejection
+never asks anyone. ([How it works](#how-it-works) has the full picture; you can also
+run it with no AI at all, and the rules alone still produce the spreadsheet.)
 
 Try it in ten seconds, no mailbox required:
 
@@ -146,23 +167,6 @@ judgement on what it cannot call then needs
 [an API key](#no-claude-code-the-same-judgement-over-the-api).
 `pip install -e ".[graph]"` adds Outlook support, `".[dev]"` adds pytest — see
 [Options](#options).
-
-## Why this is harder than it looks
-
-A rejection and an invitation are written in nearly the same words. Every rule below
-exists because a naive version got a real email wrong:
-
-| The email says | Naive reading | Actually |
-|---|---|---|
-| "we are **unable to move forward** with your application" | invitation — it says *move forward* | **rejection** |
-| "**if we decide to move forward**, we'll be in touch" | invitation | receipt; nothing offered |
-| "successful **candidates** move on to a video interview" | invitation | a description of their process |
-| "**Thank you for your interest**" + a verification link | receipt | account setup |
-| "**Reminder:** your upcoming interview" | a new interview | the one you already booked |
-
-So the classifier reads context, not keywords: an advancement phrase preceded by a
-negation, a hypothetical, or a third-person subject doesn't count. `tests/` pins down
-every one of these — each fixture is a bug that shipped once.
 
 ## What you get
 
@@ -323,11 +327,10 @@ mailbox ──► prefilter ──► rules ──┬──► confident verdict
 every verdict is cached in store.json — durable, so re-runs are incremental
 ```
 
-Two tiers, and the split is the whole idea. The rules are free, instant and offline, so
-they take the mail whose meaning is unambiguous. Everything else — plus a rotating sample
-of what the rules were *confident* about — goes to the agent, because a confidently
-mislabelled rejection never asks anyone. Each message is judged once and the verdict is
-cached in `store.json`, so re-runs cost nothing.
+The diagram is the design. The rules are free, instant and offline, so they take the mail
+whose meaning is unambiguous; everything else — plus that rotating audit sample — goes to
+the agent. Each message is judged once and the verdict is cached in `store.json`, so
+re-runs cost nothing.
 
 The prefilter is deliberately generous: it's cheap to discard a non-HR email later and
 expensive to never see a rejection at all. `store.json` is the durable record, so a
