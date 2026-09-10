@@ -343,7 +343,7 @@ one reads headers and a slice of the body for everything in the window — 100 m
 round trip over IMAP, one page of metadata over Graph. Only what survives the prefilter is
 downloaded in full: on a real mailbox, 78 messages out of 1047.
 
-### When you change the rules, or the agent's instructions
+## When rules or instructions change
 
 A rule fix reaches old mail on the next run. `classify` re-derives every verdict it
 made itself, so `fetch` then `classify` is enough — there is no cache to clear and
