@@ -23,7 +23,11 @@ def recent(candidates):
     print an empty file, and the gaps are what the interview-round logic reads."""
     stamps = [dt.datetime.strptime(c["received"], "%Y-%m-%dT%H:%M:%SZ")
               for c in candidates]
-    shift = (dt.datetime.utcnow() - dt.timedelta(days=1)) - max(stamps)
+    # utcnow() is deprecated and due for removal; datetime.UTC does not exist
+    # before 3.11, and this supports 3.9, so it goes through timezone.utc and
+    # drops the tzinfo to stay comparable with the naive fixture stamps.
+    now = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None)
+    shift = (now - dt.timedelta(days=1)) - max(stamps)
     for cand, stamp in zip(candidates, stamps):
         cand["received"] = (stamp + shift).strftime("%Y-%m-%dT%H:%M:%SZ")
     return candidates

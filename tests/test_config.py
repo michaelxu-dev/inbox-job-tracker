@@ -235,3 +235,27 @@ def test_entities_and_block_tags_survive_stripping():
     # A body that is nothing but CSS leaves nothing to read, rather than
     # leaving the stylesheet to be classified as prose.
     assert _html_to_text("<style>a{b:c}</style>") == ""
+
+
+def test_demo_never_writes_into_a_configured_account(tmp_path, monkeypatch):
+    """`demo` is the one command sold as safe to try. data_dir is derived per
+    account, so on a machine that already has data/outlook it used to overwrite
+    that store - verdicts, agent decisions and all - with synthetic fixtures."""
+    import json as _json
+    from inboxjobtracker import cli
+
+    cfg_file = tmp_path / "config.json"
+    cfg_file.write_text(_json.dumps({
+        "own_addresses": ["me@example.com"],
+        "default_account": "outlook",
+        "accounts": {"outlook": {"source": "graph"}},
+    }), encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+
+    real = tmp_path / "data" / "outlook"
+    real.mkdir(parents=True)
+    (real / "store.json").write_text('{"keep": "me"}', encoding="utf-8")
+
+    assert cli.main(["demo", "--config", str(cfg_file)]) == 0
+    assert (real / "store.json").read_text(encoding="utf-8") == '{"keep": "me"}'
+    assert (tmp_path / "data" / "demo" / "applications.html").exists()

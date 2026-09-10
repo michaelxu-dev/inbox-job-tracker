@@ -248,7 +248,13 @@ def cmd_run(cfg, args):
 
 
 def cmd_demo(cfg, args):
-    cfg = dict(cfg, source="demo")
+    # Synthetic mail goes in its own directory, never a configured account's.
+    # data_dir is derived per account, so on a machine that already has
+    # data/outlook this used to overwrite that store - candidates, verdicts,
+    # agent decisions and all - with fixtures, on the one command whose whole
+    # promise is that it is safe to try.
+    cfg = dict(cfg, source="demo", account=None,
+               data_dir=os.path.join("data", "demo"))
     cmd_fetch(cfg, args)
     cmd_classify(cfg, args)
     print("", file=sys.stderr)
