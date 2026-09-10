@@ -7,6 +7,7 @@ account-verification notice — with every name invented.
 import datetime as dt
 import json
 import os
+from urllib.parse import quote
 
 FIXTURES = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__)))), "tests", "fixtures", "emails.json")
@@ -33,12 +34,25 @@ def recent(candidates):
     return candidates
 
 
+def demo_link(fixture_id):
+    """A Web Link in the exact shape the IMAP source builds for Gmail.
+
+    Without one the column is empty and the page renders every subject as
+    plain text, so the demo hides the half of a verdict that makes it
+    checkable - the way back to the message it rests on. The message ids are
+    invented, because there is no real mail behind a synthetic mailbox.
+    """
+    mid = "demo-%s@inbox-job-tracker.example" % fixture_id
+    return ("https://mail.google.com/mail/?authuser=you@example.com#search/%s"
+            % quote("rfc822msgid:" + mid, safe=""))
+
+
 def fetch(cfg, days):
     candidates = []
     for item in load_fixtures():
         row = {k: v for k, v in item.items() if k not in ("expect", "why")}
         row.setdefault("preview", row["body"][:600])
-        row.setdefault("web_link", "")
+        row.setdefault("web_link", demo_link(item["id"]))
         row.setdefault("matched", ["demo"])
         candidates.append(row)
     return recent(candidates), len(candidates)

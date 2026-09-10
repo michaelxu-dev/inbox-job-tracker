@@ -259,3 +259,18 @@ def test_demo_never_writes_into_a_configured_account(tmp_path, monkeypatch):
     assert cli.main(["demo", "--config", str(cfg_file)]) == 0
     assert (real / "store.json").read_text(encoding="utf-8") == '{"keep": "me"}'
     assert (tmp_path / "data" / "demo" / "applications.html").exists()
+
+
+def test_demo_mail_carries_a_web_link():
+    """An empty Web Link makes the demo understate the product: the CSV column
+    is blank and the page renders every subject as plain text, hiding the way
+    back to the message a verdict rests on."""
+    from inboxjobtracker.sources import demo
+
+    candidates, _ = demo.fetch({}, 90)
+    assert candidates, "the synthetic mailbox should not be empty"
+    for cand in candidates:
+        assert cand["web_link"].startswith("https://mail.google.com/mail/")
+        # the id is escaped, or Gmail reads the @ and dots as more search terms
+        assert "rfc822msgid%3A" in cand["web_link"]
+        assert "@" not in cand["web_link"].split("#", 1)[1]
