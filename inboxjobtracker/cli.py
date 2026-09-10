@@ -252,8 +252,16 @@ def cmd_demo(cfg, args):
     cmd_fetch(cfg, args)
     cmd_classify(cfg, args)
     print("", file=sys.stderr)
-    with open(_paths(cfg)["applications.csv"], "r", encoding="utf-8-sig") as fh:
+    paths = _paths(cfg)
+    with open(paths["applications.csv"], "r", encoding="utf-8-sig") as fh:
         sys.stdout.write(fh.read())
+    # stdout is block-buffered when piped, so without this the trailing line on
+    # stderr overtakes the CSV and prints first.
+    sys.stdout.flush()
+    # The CSV is on screen already; the page is the part worth opening, and a
+    # relative path is not clickable in most terminals.
+    print("\nThe same rows as a page - open this in a browser:\n  %s"
+          % os.path.abspath(paths["applications.html"]), file=sys.stderr)
     return 0
 
 
