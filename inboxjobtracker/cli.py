@@ -4,11 +4,11 @@ import json
 import os
 import sys
 
-from . import __version__, config, judge as judge_mod, report, rules, sources
+from . import __version__, config, html as html_mod, judge as judge_mod, report, rules, sources
 from . import store as store_mod
 
 FILES = ("candidates.json", "store.json", "review_queue.json",
-         "decisions.json", "applications.csv")
+         "decisions.json", "applications.csv", "applications.html")
 
 
 def _paths(cfg):
@@ -143,9 +143,25 @@ def cmd_classify(cfg, args):
         json.dump({"items": queue}, fh, indent=2, ensure_ascii=False)
 
     written = report.write_csv(store, paths["applications.csv"], report.cutoff(cfg))
+    # Written together so the page can never quietly disagree with the CSV.
+    html_mod.write_html(store, paths["applications.html"], report.cutoff(cfg),
+                        cfg.get("account"))
     print("Classified %d: %s" % (len(candidates),
           ", ".join("%s=%d" % kv for kv in sorted(counts.items()))), file=sys.stderr)
     print("CSV rows: %d | queued for review: %d" % (written, len(queue)), file=sys.stderr)
+    return 0
+
+
+def cmd_html(cfg, args):
+    """The same rows as the CSV, grouped into one entry per application."""
+    paths = _paths(cfg)
+    store = store_mod.load(paths["store.json"])
+    if not store:
+        sys.exit("Nothing in the store yet - run:  inbox-job-tracker run")
+    count = html_mod.write_html(store, paths["applications.html"],
+                                report.cutoff(cfg), cfg.get("account"))
+    print("Wrote %s (%d applications)" % (paths["applications.html"], count),
+          file=sys.stderr)
     return 0
 
 
@@ -194,6 +210,8 @@ def cmd_merge(cfg, args):
     report.assign_interview_rounds(store, int(cfg["interview_round_gap_days"]))
     store_mod.save(paths["store.json"], store)
     written = report.write_csv(store, paths["applications.csv"], report.cutoff(cfg))
+    html_mod.write_html(store, paths["applications.html"], report.cutoff(cfg),
+                        cfg.get("account"))
     print("Merged %d decisions. CSV rows: %d" % (applied, written), file=sys.stderr)
     return 0
 
@@ -223,7 +241,9 @@ def cmd_run(cfg, args):
     cmd_classify(cfg, args)
     if judge_mod.available(cfg):
         cmd_judge(cfg, args)
-    print("\nDone -> %s" % _paths(cfg)["applications.csv"], file=sys.stderr)
+    paths = _paths(cfg)
+    print("\nDone -> %s\n        %s"
+          % (paths["applications.csv"], paths["applications.html"]), file=sys.stderr)
     return 0
 
 
@@ -259,6 +279,7 @@ COMMANDS = (
     ("classify", cmd_classify, "apply the rules, write applications.csv"),
     ("judge", cmd_judge, "ask an LLM about the uncertain ones (needs an API key)"),
     ("merge", cmd_merge, "fold decisions.json into the store"),
+    ("html", cmd_html, "write applications.html, grouped by application"),
     ("demo", cmd_demo, "run on synthetic emails, no mailbox needed"),
     ("accounts", cmd_accounts, "list the mailboxes this config defines"),
 )

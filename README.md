@@ -144,9 +144,17 @@ step 3. Exit it, check the variable is set (`echo $GMAIL_APP_PASSWORD`, or
 
 #### 5. Result
 
-`data/gmail/applications.csv`, one row per employer + role + stage, with the
-sentence each verdict rests on and a link back to the message. Open it in Excel,
-Numbers or Sheets.
+Two files, written together and regenerated from `store.json` every run:
+
+- **`data/gmail/applications.csv`** — one row per employer + role + stage, with the
+  sentence each verdict rests on and a link back to the message. Open it in Excel,
+  Numbers or Sheets.
+- **`data/gmail/applications.html`** — the same rows grouped into one entry per
+  application, so a history reads as `Acknowledge › Invite to first interview ›
+  Reject` on a single line instead of three you reassemble by eye. Stat cards,
+  search, and filter chips; click a row for the messages behind it, each with its
+  quoted sentence and a link to the original. One self-contained file, no
+  dependencies and no network — double-click to open it.
 
 Nothing is uploaded, nothing is marked as read, and nothing in your mailbox is
 changed — the connection is read-only.
@@ -259,6 +267,7 @@ inbox-job-tracker run --days 7        # just this week; the spreadsheet keeps it
 inbox-job-tracker fetch               # read mail
 inbox-job-tracker classify            # apply the rules
 inbox-job-tracker judge               # optional: ask an LLM about the uncertain ones
+inbox-job-tracker html                # rebuild applications.html on its own
 inbox-job-tracker accounts            # the mailboxes this config defines
 ```
 
@@ -385,6 +394,7 @@ inbox-job-tracker/
 │   ├── prefilter.py             # is this mail job-related at all? deliberately generous
 │   ├── rules.py                 # the classifier: reject vs receipt vs invitation, and why
 │   ├── report.py                # store -> applications.csv, one row per stage
+│   ├── html.py                  # store -> applications.html, one row per application
 │   ├── store.py                 # the durable record; makes re-runs incremental
 │   ├── judge.py                 # optional LLM second opinion over the API
 │   ├── graph_auth.py            # Microsoft OAuth device-code flow (MSAL)
@@ -405,7 +415,7 @@ inbox-job-tracker/
 ├── docs/outlook-setup.md        # the Azure app registration, five minutes
 └── data/                        # created on first run, gitignored - your mail lives here
     └── <account>/               # candidates.json, store.json, review_queue.json,
-                                 # decisions.json, applications.csv
+                                 # decisions.json, applications.csv, applications.html
 ```
 
 Two files are worth knowing by name. `data/<account>/store.json` is the durable
