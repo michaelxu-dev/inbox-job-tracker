@@ -12,6 +12,9 @@ It monitors your inbox, identifies job-search activity, and updates your applica
 timeline automatically — while using deterministic rules for obvious cases and an AI
 agent for ambiguous ones.
 
+The result is a CSV file you can open in Excel, Google Sheets, or import into another
+tool.
+
 ```
 CompanyName  Position                 Status                     Sender                  Notes
 Northwind    Senior Backend Engineer  Acknowledge                no-reply@greenhouse...  Thanks for applying to Northwind Robotics
