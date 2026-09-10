@@ -80,6 +80,8 @@ Five minutes to your first spreadsheet, using Gmail. Other providers are in
 
 #### 1. Clone
 
+Already ran the demo above? You're in the right directory — skip to step 2.
+
 ```bash
 git clone https://github.com/michaelxu-dev/inbox-job-tracker
 cd inbox-job-tracker
@@ -149,7 +151,7 @@ Numbers or Sheets.
 Nothing is uploaded, nothing is marked as read, and nothing in your mailbox is
 changed — the connection is read-only.
 
-#### Why this path
+#### What Claude Code adds
 
 The skill (`.claude/skills/`) is the entry point: it takes the time range and the
 mailbox as plain arguments, runs fetch and classify, hands the reading to the
@@ -180,6 +182,9 @@ Both Gmail and Yahoo need an **App Password**, not your normal one:
 |---|---|---|
 | Gmail | 2-Step Verification on, then [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords) | `imap.gmail.com` |
 | Yahoo | [login.yahoo.com/account/security](https://login.yahoo.com/account/security) → Generate app password | `imap.mail.yahoo.com` |
+
+Set `imap_user` to your full address (e.g. `you@gmail.com`) in the `gmail` account
+block.
 
 `password_env` names the environment variable each account reads, so several mailboxes
 can be open at once. Access is read-only — the tool can't send, move or delete mail, and
