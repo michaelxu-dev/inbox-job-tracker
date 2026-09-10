@@ -27,6 +27,10 @@ Fabrikam     Senior Data Engineer     Acknowledge                careers@fabrika
 Fabrikam     Senior Data Engineer     Invite to test             no-reply@greenhouse...  You have been invited to complete an online assessment
 ```
 
+Every run also writes `applications.html`, the same rows grouped into one entry per
+application. Click any row to see the messages behind it. Rules handle the obvious
+ones, the AI agent handles the ambiguous ones.
+
 ## Why this exists
 
 Applied to sixty roles and lost track? Your mailbox already holds the answer, spread
