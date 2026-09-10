@@ -353,6 +353,25 @@ whose meaning is unambiguous; everything else — plus that rotating audit sampl
 the agent. Each message is judged once and the verdict is cached in `store.json`, so
 re-runs cost nothing.
 
+### When you change the rules, or the agent's instructions
+
+A rule fix reaches old mail on the next run. `classify` re-derives every verdict it
+made itself, so `fetch` then `classify` is enough — there is no cache to clear and
+nothing to pay. Only mail still inside the `--days` window is re-examined, though,
+because that is all `fetch` wrote; widen the window to reach further back.
+
+What does **not** re-derive is a verdict the agent made. Those carry
+`decided_by: "agent"` in `store.json` and are never re-judged — the whole point of
+the store is that reading a message costs something and is done once. Their company,
+role, evidence sentence and link do refresh from the improved rules; the verdict
+does not. So a change to the subagent's instructions or the judge prompt reaches
+only mail judged after the change.
+
+To re-judge anyway, delete those entries from `store.json` — or the whole file for a
+clean slate — and re-run. Over the API tier that bills for every message again, which
+is exactly what the cache exists to avoid, so prefer deleting the entries you
+actually want reconsidered.
+
 The prefilter is deliberately generous: it's cheap to discard a non-HR email later and
 expensive to never see a rejection at all. `store.json` is the durable record, so a
 narrower `--days` window scans less mail without discarding anything already learned.
