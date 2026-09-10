@@ -89,7 +89,7 @@ cd inbox-job-tracker
 
 Stay in this terminal for steps 2 and 3 — Claude Code starts in step 4, and it
 inherits the environment of the shell that launches it. Nothing to install and no
-API key: the skill and subagent ship in the repo's `.claude/` folder, so
+separate API key: the skill and subagent ship in the repo's `.claude/` folder, so
 `/inbox-job-tracker` appears the moment you open the directory.
 
 #### 2. Configure
