@@ -134,13 +134,13 @@
   {
     "id": "d40",
     "folder": "inbox",
-    "from_name": "Databricks Talent Acquisition",
-    "from_address": "no-reply@recruiting.databricks.example",
+    "from_name": "Contoso Talent Acquisition",
+    "from_address": "no-reply@recruiting.contoso.example",
     "received": "2026-08-05T20:35:00Z",
-    "subject": "Thanks for your interest in Databricks, CHANGHONG!",
+    "subject": "Thanks for your interest in Contoso, Alex!",
     "expect": "Reject",
     "why": "ack subject over a decline body; 'decision to not move forward FOR your application' is the same sentence as 'not moving forward with', and the ack rules must not outrank it",
-    "body": "Hi CHANGHONG,\n\nThank you for your application to Databricks!\n\nAfter reviewing your skills and experience, we have made the decision to not move forward for your application for the Senior Software Engineer - Backend position at this time.\n\nPlease feel free to check our careers page, we are always updating our website with new opportunities.\n\nWe appreciate your interest and wish you the best of luck in your search!\n\nWarm regards,\nDatabricks Talent Acquisition"
+    "body": "Hi Alex,\n\nThank you for your application to Contoso!\n\nAfter reviewing your skills and experience, we have made the decision to not move forward for your application for the Senior Software Engineer - Backend position at this time.\n\nPlease feel free to check our careers page, we are always updating our website with new opportunities.\n\nWe appreciate your interest and wish you the best of luck in your search!\n\nWarm regards,\nContoso Talent Acquisition"
   },
   {
     "id": "d41",

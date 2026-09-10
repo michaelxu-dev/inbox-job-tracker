@@ -13,7 +13,14 @@ timeline automatically — while using deterministic rules for obvious cases and
 agent for ambiguous ones.
 
 The result is a CSV file you can open in Excel, Google Sheets, or import into another
-tool.
+tool, and an HTML page grouped into one entry per application:
+
+<p align="center">
+  <img src="assets/applications-html.png" alt="applications.html - one row per application, showing the stages each one reached" width="900">
+</p>
+
+Click any row to see the messages behind it. Rules handle the obvious ones, the AI
+agent handles the ambiguous ones.
 
 Example output:
 
@@ -27,9 +34,6 @@ Fabrikam     Senior Data Engineer     Acknowledge                careers@fabrika
 Fabrikam     Senior Data Engineer     Invite to test             no-reply@greenhouse...  You have been invited to complete an online assessment
 ```
 
-Every run also writes `applications.html`, the same rows grouped into one entry per
-application. Click any row to see the messages behind it. Rules handle the obvious
-ones, the AI agent handles the ambiguous ones.
 
 ## Why this exists
 
