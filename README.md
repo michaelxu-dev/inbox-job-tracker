@@ -15,6 +15,8 @@ agent for ambiguous ones.
 The result is a CSV file you can open in Excel, Google Sheets, or import into another
 tool.
 
+Example output:
+
 ```
 CompanyName  Position                 Status                     Sender                  Notes
 Northwind    Senior Backend Engineer  Acknowledge                no-reply@greenhouse...  Thanks for applying to Northwind Robotics
@@ -24,9 +26,6 @@ Contoso      Staff Platform Engineer  Invite to first interview  dana.reed@conto
 Fabrikam     Senior Data Engineer     Acknowledge                careers@fabrikam...     Thanks for applying to Fabrikam
 Fabrikam     Senior Data Engineer     Invite to test             no-reply@greenhouse...  You have been invited to complete an online assessment
 ```
-
-*(That is real output — it is exactly what `demo` prints. Dates and the
-Web Link column are trimmed here for width.)*
 
 ## Why this exists
 
