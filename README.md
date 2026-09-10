@@ -25,13 +25,13 @@ agent handles the ambiguous ones.
 Example output:
 
 ```
-CompanyName  Position                 Status                     Sender                  Notes
-Northwind    Senior Backend Engineer  Acknowledge                no-reply@greenhouse...  Thanks for applying to Northwind Robotics
-Northwind    Senior Backend Engineer  Reject                     no-reply@greenhouse...  Unfortunately, at this time we are unable to move forward
-Contoso      Staff Platform Engineer  Acknowledge                contoso@myworkday.com   Thank you for your interest in a career at Contoso
-Contoso      Staff Platform Engineer  Invite to first interview  dana.reed@contoso.com   We would like to invite you to the next stage
-Fabrikam     Senior Data Engineer     Acknowledge                careers@fabrikam...     Thanks for applying to Fabrikam
-Fabrikam     Senior Data Engineer     Invite to test             no-reply@greenhouse...  You have been invited to complete an online assessment
+CompanyName  Position                 Status                     Sender                  Notes                                          Web Link
+Northwind    Senior Backend Engineer  Acknowledge                no-reply@greenhouse...  Thanks for applying to Northwind Robotics      https://mail.google.com/...#rfc822msgid...
+Northwind    Senior Backend Engineer  Reject                     no-reply@greenhouse...  Unfortunately, at this time we are unable...   https://mail.google.com/...#rfc822msgid...
+Contoso      Staff Platform Engineer  Acknowledge                contoso@myworkday.com   Thank you for your interest in a career...     https://mail.google.com/...#rfc822msgid...
+Contoso      Staff Platform Engineer  Invite to first interview  dana.reed@contoso.com   We would like to invite you to the next stage  https://mail.google.com/...#rfc822msgid...
+Fabrikam     Senior Data Engineer     Acknowledge                careers@fabrikam...     Thanks for applying to Fabrikam                https://mail.google.com/...#rfc822msgid...
+Fabrikam     Senior Data Engineer     Invite to test             no-reply@greenhouse...  You have been invited to complete an...        https://mail.google.com/...#rfc822msgid...
 ```
 
 
