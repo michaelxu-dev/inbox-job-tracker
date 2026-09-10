@@ -1,12 +1,16 @@
 # Inbox Job Tracker
 
-**An AI agent that reads your job-application email and fills in the spreadsheet** —
-a rule engine for speed, the agent for judgement.
+**An AI agent that understands job-related emails and turns them into a structured
+application history.**
 
 [![tests](https://github.com/michaelxu-dev/inbox-job-tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/michaelxu-dev/inbox-job-tracker/actions/workflows/ci.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-skill%20%2B%20subagent-D97757.svg)](#claude-code-recommended)
+
+It monitors your inbox, identifies job-search activity, and updates your application
+timeline automatically — while using deterministic rules for obvious cases and an AI
+agent for ambiguous ones.
 
 ```
 CompanyName  Position                 Status                     Sender                  Notes
