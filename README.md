@@ -56,7 +56,7 @@ what the agent is for: it reads the bodies the rules could not settle, decides w
 each one means, and reports which rules it had to overrule — plus a rotating audit
 of what they were *confident* about, because a confidently mislabelled rejection
 never asks anyone. ([How it works](#how-it-works) has the full picture; you can also
-run it with no AI at all, and the rules alone still produce the spreadsheet.)
+run it with no AI at all, and the rules alone still produce the application history.)
 
 ## Try it in 10 seconds
 
@@ -74,8 +74,8 @@ and runs on any Python 3.9+.
 
 ### Claude Code (recommended)
 
-Five minutes to your first spreadsheet, using Gmail. Other providers are in
-[Configure your mailbox](#configure-your-mailbox); the same run
+Get your first structured application history in five minutes, using Gmail. Other
+providers are in [Configure your mailbox](#configure-your-mailbox); the same run
 [works from a plain terminal](#terminal-mode) too.
 
 #### 1. Clone
@@ -168,7 +168,7 @@ subagent, and merges the result. What that buys over a bare terminal run:
   repeating a mistake for months.
 - **It asks you when a mail is genuinely ambiguous** instead of guessing. You know which
   company you applied to; an unattended run does not.
-- **No API key.** The judgement runs inside your Claude Code session.
+- **No separate API key.** The judgement runs inside your Claude Code session.
 
 ## Configure your mailbox
 
@@ -262,9 +262,9 @@ inbox-job-tracker judge               # optional: ask an LLM about the uncertain
 inbox-job-tracker accounts            # the mailboxes this config defines
 ```
 
-`--account NAME` picks a mailbox and `--days N` a time range; both are accepted on
-either side of the subcommand. Pass the same `--account` to every command in a run,
-or `merge` writes into a different store than `classify` filled.
+`--account NAME` picks a mailbox and `--days N` a time range, on either side of the
+subcommand — but pass the same `--account` to every command in a run, or `merge`
+writes into a different store than `classify` filled.
 
 ### LLM judging
 
