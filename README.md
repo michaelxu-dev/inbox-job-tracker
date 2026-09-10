@@ -75,7 +75,8 @@ git clone https://github.com/michaelxu-dev/inbox-job-tracker && cd inbox-job-tra
 python -m inboxjobtracker.cli demo
 ```
 
-That prints the sample above from a synthetic mailbox. The core has zero dependencies
+That prints the sample above from a synthetic mailbox and ends with the path to
+`applications.html`, which you can open in a browser. The core has zero dependencies
 and runs on any Python 3.9+.
 
 ## Quick Start
@@ -397,7 +398,7 @@ inbox-job-tracker/
 ├── pyproject.toml               # packaging, the inbox-job-tracker command, optional extras
 │
 ├── inboxjobtracker/             # the package
-│   ├── cli.py                   # run | fetch | classify | judge | merge | demo | accounts
+│   ├── cli.py                   # run | fetch | classify | judge | merge | html | demo | accounts
 │   ├── config.py                # config + accounts resolution; each account owns data/<name>
 │   ├── prefilter.py             # is this mail job-related at all? deliberately generous
 │   ├── rules.py                 # the classifier: reject vs receipt vs invitation, and why
@@ -418,6 +419,7 @@ inbox-job-tracker/
 ├── tests/
 │   ├── fixtures/emails.json     # every email the classifier once got wrong
 │   ├── test_rules.py            # ...and what it must say about each one
+│   ├── test_html.py             # the page says what the CSV says, and escapes what it shows
 │   └── test_config.py           # accounts, per-account stores, IMAP fetch and links
 │
 ├── docs/outlook-setup.md        # the Azure app registration, five minutes
