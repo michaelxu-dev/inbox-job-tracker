@@ -170,19 +170,9 @@ subagent, and merges the result. What that buys over a bare terminal run:
 
 ## Configure your mailbox
 
-> Commands here are written as `inbox-job-tracker`, which exists once you
-> [install it](#install). Running straight from the clone, use
-> `python -m inboxjobtracker.cli` instead — every command works the same either way.
-
 ### Gmail / Yahoo / Fastmail
 
-Any IMAP provider, no app registration:
-
-```bash
-cp config.example.json config.json     # set imap_user and own_addresses
-export GMAIL_APP_PASSWORD="your-app-password"
-inbox-job-tracker run --account gmail
-```
+Any IMAP provider, no app registration.
 
 Both Gmail and Yahoo need an **App Password**, not your normal one:
 
@@ -253,6 +243,10 @@ the base package. Want the command on your `PATH` without managing a virtualenv?
 [pipx](https://pipx.pypa.io) does it in one step: `pipx install .`
 
 ### Run
+
+> Commands here are written as `inbox-job-tracker`, which exists once you
+> [install it](#install). Running straight from the clone, use
+> `python -m inboxjobtracker.cli` instead — every command works the same either way.
 
 ```bash
 inbox-job-tracker run --account gmail --days 60   # fetch, classify, write the CSV
