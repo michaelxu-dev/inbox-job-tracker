@@ -177,6 +177,16 @@ VALEDICTION_CUE = re.compile(
     r"\b(best wishes|wish(ing)? you|good luck|all the best|"
     r"every success|the best)\b[^.!?;\n]*$", re.I,
 )
+# A stage named as something the process *may* contain is a description of the
+# process, not an offer of it: "For Engineering roles, this may also include a
+# Technical Interview", "you might be asked to complete a skills test". Kept to
+# the verbs that describe composition - "you may schedule a call at your
+# convenience" is a real invitation and must stay one.
+POSSIBILITY_CUE = re.compile(
+    r"\b((may|might|could|can) (also )?(include|involve|consist|require|be|contain)|"
+    r"depending on|typically|usually|generally|normally)\b"
+    r"[^.!?;\n]*$", re.I,
+)
 PRECONDITION_CUE = re.compile(
     r"\b(before|until|in order (for us )?to|so that (we|i) can|"
     r"pending)\b[^.!?;\n]*$", re.I,
@@ -234,7 +244,7 @@ NAME_NOISE = re.compile(
 
 
 ADVANCEMENT_CUES = (NEGATION_CUE, CONDITIONAL_CUE, GENERIC_SUBJECT_CUE,
-                    PRECONDITION_CUE, VALEDICTION_CUE)
+                    PRECONDITION_CUE, VALEDICTION_CUE, POSSIBILITY_CUE)
 # A rejection is a negation and ends in a farewell, so those two cues cannot be
 # applied to it - they are what it is made of. What still holds is that a
 # hypothetical rejection rejects nobody: "If you see the job moved to an

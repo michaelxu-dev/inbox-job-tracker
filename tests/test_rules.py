@@ -331,3 +331,20 @@ def test_the_guard_never_touches_a_real_rejection(text):
     cues must never apply to it - only the hypothetical ones do."""
     assert rules.score(text, rules.REJECT_RULES, guarded=True,
                        cues=rules.REJECT_CUES)[0] > 0
+
+
+def test_a_stage_the_process_may_contain_is_not_an_offer():
+    """"For Engineering roles, this may also include a Technical Interview" is
+    the company describing its funnel. Nothing has been offered to the reader."""
+    text = ("For Engineering roles, this may also include a Technical Interview. "
+            "Depending on the position, you might be asked to complete a skills test.")
+    assert rules.score(text, rules.NEXT_RULES, guarded=True)[0] == 0
+
+
+def test_permission_is_still_an_invitation():
+    """The cue is about what a process contains, not what you are allowed to do:
+    "you may schedule a call" offers something and must keep scoring."""
+    assert rules.score("You may schedule a call at your convenience.",
+                       rules.NEXT_RULES, guarded=True)[0] > 0
+    assert rules.score("We would like to invite you to a technical interview.",
+                       rules.NEXT_RULES, guarded=True)[0] > 0

@@ -229,5 +229,16 @@
     "expect": "Acknowledge",
     "why": "a receipt whose only decision-shaped sentence is a legend for the careers dashboard: 'if you see the job moved to an inactive state, that means ... you were not selected'. Reject scoring was unguarded, so that hypothetical scored 10 and published a rejection that never happened",
     "body": "Hi Alex,\n\nThank you for taking the time to submit your application for Senior Software Engineer - Data Integration (Job number: 200036142). We're glad you're interested in a career at Contoso.\n\nYou may not receive feedback from us on your application directly, but please know that it's being evaluated, and you'll hear from us as soon as the review process is complete. If you're selected for an interview, you'll be notified by the recruiting team.\n\nUpdates regarding your application status can be viewed through your Action Center. If you see the job moved to an inactive state, that means the position is either no longer open, you withdrew from consideration, or you were not selected for the role.\n\nThank you,\nContoso Recruiting"
+  },
+  {
+    "id": "d49",
+    "folder": "inbox",
+    "from_name": "Contoso Talent Team",
+    "from_address": "no-reply@us.greenhouse-mail.io",
+    "received": "2026-08-27T09:00:00Z",
+    "subject": "Thank you for applying to Contoso Inc.",
+    "expect": "Acknowledge",
+    "why": "a receipt that walks through the whole hiring pipeline. Every stage in it is hypothetical - conditional on a match, described about candidates in general, or something the process *may* include - yet 'Technical Interview' and the 'Next Steps' heading scored 15 and published it as a first interview",
+    "body": "Hi Alex,\n\nThanks so much for applying-we really appreciate your interest in joining our team!\n\nHere's a quick look at what you can expect next:\n\nApplication Review: Our hiring team will carefully review your application and any supporting documents\nFirst Contact: If your background looks like a good match, we'll reach out to schedule an introductory chat with our Talent Team.\nNext Steps: From there, successful candidates move on to a video interview with the hiring team. For Engineering roles, this may also include a Technical Interview. Depending on the position, you might be asked to complete a skills test and meet with our leadership team\nFinal Step: Before we make an offer, we'll run background checks.\n\nWe'll be in touch if we'd like to move forward with your application. Thanks again for considering a career with us!\n\nBest,\n\nContoso Talent Team"
   }
 ]
