@@ -380,6 +380,7 @@ EVENT_REMINDER = re.compile(
 ACCOUNT_ADMIN = re.compile(
     r"(confirm (your )?e-?mail( address)?|verify (your )?e-?mail( address)?|"
     r"activate (your )?(candidate |applicant )?account|"
+    r"(set ?up|setting up|create|creating|register) (your |an |a )?[\w ]{0,20}account|"
     r"complete setup for your (candidate|applicant) account|"
     r"(this )?link will expire|"
     r"one[- ]time (passcode|password|code)|\bOTP\b|access code|sign-?in code|"
@@ -432,6 +433,21 @@ EMPLOYMENT_LIFECYCLE = re.compile(
     r"end(ing)? (of )?your employment|your last day|final pay(check|cheque)|"
     r"severance|laid off|lay(ing)? off|redundanc(y|ies)|"
     r"offboarding|exit interview|resignation)",
+    re.I,
+)
+
+
+# Employment insurance, welfare-to-work programmes and the job boards that
+# governments run alongside them are about *getting* work, not an answer from an
+# employer. They are unusually good at tripping the rules: every one of them
+# talks about jobs, applications and next steps, which is exactly what the
+# job-context gate looks for. "Your next step after applying for Employment
+# Insurance is to set up your Job Bank account" scored as an interview.
+BENEFITS_PROGRAMME = re.compile(
+    r"\b(employment insurance|\bEI\b (application|claim|benefits?)|"
+    r"applied for EI|unemployment (insurance|benefits?)|jobseeker'?s allowance|"
+    r"social assistance|income support|"
+    r"service canada|job bank|workbc|employment services)\b",
     re.I,
 )
 
@@ -743,6 +759,18 @@ def classify(cand):
         return {
             "status": UNCLEAR, "confidence": "high",
             "note": "about existing employment, not an application",
+            "explicit_round": None, "reject_score": rej, "next_score": nxt,
+            "reject_hits": rej_hits, "next_hits": nxt_hits,
+        }
+
+    # Yields to a decisive score, like the job-board gate: a real employer whose
+    # mail happens to mention a benefits programme still gets read. It only
+    # settles the weak end, which is where this mail lives - "next step",
+    # "applications", "jobs", and no decision about the reader anywhere in it.
+    if BENEFITS_PROGRAMME.search(text) and rej < 8 and nxt < 8:
+        return {
+            "status": UNCLEAR, "confidence": "high",
+            "note": "employment programme or state job service, not an employer reply",
             "explicit_round": None, "reject_score": rej, "next_score": nxt,
             "reject_hits": rej_hits, "next_hits": nxt_hits,
         }

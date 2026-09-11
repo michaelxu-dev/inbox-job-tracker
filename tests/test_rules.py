@@ -348,3 +348,27 @@ def test_permission_is_still_an_invitation():
                        rules.NEXT_RULES, guarded=True)[0] > 0
     assert rules.score("We would like to invite you to a technical interview.",
                        rules.NEXT_RULES, guarded=True)[0] > 0
+
+
+def test_a_benefits_programme_is_not_an_employer():
+    """Unemployment benefits and the state job boards beside them talk about
+    jobs, applications, resumes and next steps - everything the job-context
+    check looks for - while deciding nothing about the reader."""
+    mail = {"subject": "Applied for EI? Now set up your Job Bank account",
+            "from_address": "no-reply-jobbank-ei@example.gov",
+            "from_name": "Job Bank",
+            "body": "Your next step after applying for Employment Insurance (EI) "
+                    "is to set up your Job Bank account. Submit applications in "
+                    "just a few clicks and get matched with jobs."}
+    assert rules.classify(mail)["status"] == rules.UNCLEAR
+
+
+def test_the_gate_yields_to_a_real_decision():
+    """An employer that happens to mention a programme still gets read: the gate
+    only settles mail whose signal was weak to begin with."""
+    mail = {"subject": "Interview invitation",
+            "from_address": "careers@acme.com", "from_name": "Acme",
+            "body": "We would like to invite you to an interview next week. "
+                    "Please share your availability. If you are receiving "
+                    "Employment Insurance this will not affect your application."}
+    assert rules.classify(mail)["status"].startswith("Invite")

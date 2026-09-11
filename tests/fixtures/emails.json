@@ -240,5 +240,16 @@
     "expect": "Acknowledge",
     "why": "a receipt that walks through the whole hiring pipeline. Every stage in it is hypothetical - conditional on a match, described about candidates in general, or something the process *may* include - yet 'Technical Interview' and the 'Next Steps' heading scored 15 and published it as a first interview",
     "body": "Hi Alex,\n\nThanks so much for applying-we really appreciate your interest in joining our team!\n\nHere's a quick look at what you can expect next:\n\nApplication Review: Our hiring team will carefully review your application and any supporting documents\nFirst Contact: If your background looks like a good match, we'll reach out to schedule an introductory chat with our Talent Team.\nNext Steps: From there, successful candidates move on to a video interview with the hiring team. For Engineering roles, this may also include a Technical Interview. Depending on the position, you might be asked to complete a skills test and meet with our leadership team\nFinal Step: Before we make an offer, we'll run background checks.\n\nWe'll be in touch if we'd like to move forward with your application. Thanks again for considering a career with us!\n\nBest,\n\nContoso Talent Team"
+  },
+  {
+    "id": "d50",
+    "folder": "inbox",
+    "from_name": "Job Bank",
+    "from_address": "no-reply-jobbank-ei@example.gov",
+    "received": "2026-06-17T09:00:00Z",
+    "subject": "Applied for EI? Now set up your Job Bank account",
+    "expect": "Unclear",
+    "why": "an unemployment-benefits mail telling you to register on the state job board. No employer, no application, no decision - but it says next step, jobs, applications and resume, so every job-context check waves it through and 'next step' alone scored it as an interview invitation",
+    "body": "Hello,\n\nYour next step after applying for Employment Insurance (EI) is to set up your Job Bank account.\n\nTo help you look for work, we will alert you to new jobs.\n\nConnect with employers faster - submit applications in just a few clicks\nGet matched with jobs - create your profile and let employers find you\nBuild or upload your resume\nStay organized - keep everything in one place (resumes, applications, alerts)\n\nYou'll also receive job alerts based on your last occupation.\n\nThank you,\nJob Bank"
   }
 ]
