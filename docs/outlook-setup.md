@@ -20,11 +20,21 @@ you miss them, so they are called out below.
 
 8. **Install with the `graph` extra.** Outlook talks to Microsoft Graph over REST,
    which needs two packages the core does not use — `msal` and `requests`. The plain
-   install does not include them:
+   install does not include them.
+
+   Do it inside a virtualenv. On macOS and Linux the system Python's
+   `site-packages` is not writable, so pip either falls back to a `--user` install —
+   putting the command somewhere that is usually not on your `PATH` — or refuses
+   outright with `error: externally-managed-environment`:
 
    ```bash
-   pip install -e ".[graph]"      # or, without installing the project: pip install msal requests
+   python3 -m venv .venv
+   source .venv/bin/activate          # Windows: .venv\Scripts\Activate.ps1
+   pip install -e ".[graph]"          # or, without installing the project: pip install msal requests
    ```
+
+   Activating the virtualenv is also what puts `inbox-job-tracker` on your `PATH`.
+   Open a new terminal later and you must activate it again before the command works.
 
 Then run it:
 
