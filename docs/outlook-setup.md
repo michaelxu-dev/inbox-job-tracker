@@ -18,8 +18,26 @@ you miss them, so they are called out below.
 7. **API permissions → Add a permission → Microsoft Graph → Delegated permissions →
    `Mail.Read`.** Add `User.Read` too. No admin consent needed.
 
+8. **Install with the `graph` extra.** Outlook talks to Microsoft Graph over REST,
+   which needs two packages the core does not use — `msal` and `requests`. The plain
+   install does not include them:
+
+   ```bash
+   pip install -e ".[graph]"      # or, without installing the project: pip install msal requests
+   ```
+
+Then run it:
+
 ```bash
 inbox-job-tracker run
+```
+
+If that reports `command not found`, the package is not installed or the virtualenv is
+not active. Either activate it, or run the module directly — same program, no install
+needed:
+
+```bash
+python -m inboxjobtracker.cli run
 ```
 
 First run prints a device code; sign in with it once and the token is cached.

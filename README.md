@@ -99,7 +99,9 @@ cd inbox-job-tracker
 Stay in this terminal for steps 2 and 3 — Claude Code starts in step 4, and it
 inherits the environment of the shell that launches it. Nothing to install and no
 separate API key: the skill and subagent ship in the repo's `.claude/` folder, so
-`/inbox-job-tracker` appears the moment you open the directory.
+`/inbox-job-tracker` appears the moment you open the directory. (Outlook is the
+exception — it needs `pip install -e ".[graph]"`, see
+[Outlook / Microsoft 365](#outlook--microsoft-365).)
 
 #### 2. Configure
 
@@ -227,6 +229,10 @@ On Gmail, `INBOX` alone misses anything archived or filtered to a label — add
 Set `"source": "graph"` and follow [docs/outlook-setup.md](docs/outlook-setup.md). It's a
 free Azure app registration, about five minutes, and the guide covers the three settings
 that fail confusingly if you miss them.
+
+Outlook is the one path that needs packages installed: it talks to Microsoft Graph over
+REST, so `pip install -e ".[graph]"` for `msal` and `requests`. The IMAP providers above
+need nothing — `imaplib` is in the standard library.
 
 ### Multiple mailboxes
 
