@@ -137,15 +137,25 @@ claude
 Then type the command:
 
 ```
-/inbox-job-tracker                 # default account, the window from config.json
-/inbox-job-tracker 60              # the last 60 days
+/inbox-job-tracker                 # default_account and lookback_days from config.json
+/inbox-job-tracker 60              # scan the last 60 days instead
 /inbox-job-tracker 60 gmail        # ...of the gmail mailbox
-/inbox-job-tracker gmail           # gmail, configured window
+/inbox-job-tracker gmail           # gmail, with the configured lookback_days
 ```
 
 Two arguments, both optional and in either order: how many days, and which account
 from your `config.json`. Plain words work as well — "check my job replies from the
 last month" reaches the same run.
+
+The number is **how far back to read mail**, and it only affects the scan: passing
+`60` reads two months of mail and costs less, but the spreadsheet still shows
+everything earlier runs learned, because `store.json` keeps it all.
+
+`lookback_days` in `config.json` (90 by default) is what applies when you pass no
+number — and it does two jobs, which is worth knowing: it is the default scan window
+*and* the oldest date published. Rows older than it stay in `store.json` but drop out
+of the CSV and the page, so a verdict that has aged out cannot sit there stale
+forever. Widening `lookback_days` brings them straight back.
 
 If it stops saying the password variable is missing, Claude Code was started before
 step 3. Exit it, check the variable is set (`echo $GMAIL_APP_PASSWORD`, or
