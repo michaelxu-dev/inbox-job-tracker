@@ -63,6 +63,16 @@ def cmd_classify(cfg, args):
         candidates = json.load(fh)["candidates"]
 
     store = store_mod.load(paths["store.json"])
+    # An empty store beside an existing CSV cannot be a first run: the two are
+    # written together, so the store went missing. Say so rather than silently
+    # re-deriving every verdict and dropping the agent's, which is the same
+    # mail judged - and, on the API tier, paid for - a second time.
+    if not store and os.path.exists(paths["applications.csv"]):
+        print("Warning: %s is missing or empty, but %s exists.\n"
+              "         Every verdict will be re-derived and any agent judgement is lost.\n"
+              "         A copy of the previous store may be at %s.bak"
+              % (paths["store.json"], paths["applications.csv"], paths["store.json"]),
+              file=sys.stderr)
     own = set(cfg["own_addresses"])
     review, audit, counts = [], [], {}
 

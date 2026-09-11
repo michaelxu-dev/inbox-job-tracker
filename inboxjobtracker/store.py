@@ -20,5 +20,14 @@ def load(path):
 
 
 def save(path, store):
+    """Write the store, keeping the previous copy alongside it.
+
+    Everything else in data/ is regenerated, so this one file is the only thing
+    a mistake can destroy - and losing it is expensive rather than merely
+    annoying: every agent verdict in it has to be earned again, which on the API
+    tier means paying for the same mail twice. The backup costs a file copy.
+    """
+    if os.path.exists(path):
+        os.replace(path, path + ".bak")
     with open(path, "w", encoding="utf-8") as fh:
         json.dump(store, fh, indent=2, ensure_ascii=False)

@@ -274,3 +274,34 @@ def test_demo_mail_carries_a_web_link():
         # the id is escaped, or Gmail reads the @ and dots as more search terms
         assert "rfc822msgid%3A" in cand["web_link"]
         assert "@" not in cand["web_link"].split("#", 1)[1]
+
+
+def test_saving_the_store_keeps_the_previous_copy(tmp_path):
+    """Everything else in data/ is regenerated; the store is the only file a
+    mistake can destroy, and every agent verdict in it was paid for once."""
+    from inboxjobtracker import store as store_mod
+
+    path = tmp_path / "store.json"
+    store_mod.save(str(path), {"a": {"status": "Reject"}})
+    assert not (tmp_path / "store.json.bak").exists(), "nothing to back up on a first write"
+    store_mod.save(str(path), {"b": {"status": "Acknowledge"}})
+    assert store_mod.load(str(path)) == {"b": {"status": "Acknowledge"}}
+    assert store_mod.load(str(path) + ".bak") == {"a": {"status": "Reject"}}
+
+
+def test_classify_warns_when_the_store_vanished(tmp_path, monkeypatch, capsys):
+    """An empty store beside an existing CSV is not a first run - the two are
+    written together - so it means the durable record went missing."""
+    import json as _json
+    from inboxjobtracker import cli
+
+    monkeypatch.chdir(tmp_path)
+    data = tmp_path / "data"
+    data.mkdir()
+    (data / "candidates.json").write_text(_json.dumps({"scanned": 0, "candidates": []}),
+                                          encoding="utf-8")
+    (data / "applications.csv").write_text("CompanyName\n", encoding="utf-8")
+
+    cli.cmd_classify({"own_addresses": [], "review_batch_size": 40,
+                      "interview_round_gap_days": 10, "lookback_days": 90}, None)
+    assert "is missing or empty" in capsys.readouterr().err
