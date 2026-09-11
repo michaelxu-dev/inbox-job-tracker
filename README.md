@@ -137,10 +137,10 @@ claude
 Then type the command:
 
 ```
-/inbox-job-tracker                 # default_account and lookback_days from config.json
-/inbox-job-tracker 60              # scan the last 60 days instead
-/inbox-job-tracker 60 gmail        # ...of the gmail mailbox
-/inbox-job-tracker gmail           # gmail, with the configured lookback_days
+/inbox-job-tracker                 # default_account, lookback_days  (both from config.json)
+/inbox-job-tracker 60              # default_account, last 60 days
+/inbox-job-tracker 60 gmail        # gmail account,   last 60 days
+/inbox-job-tracker gmail           # gmail account,   lookback_days
 ```
 
 Two arguments, both optional and in either order: how many days, and which account
