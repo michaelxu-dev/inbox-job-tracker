@@ -347,21 +347,21 @@ step at a time.
  ┌──────────────────────────────────────────────────────────────┐
  │ TIER 1 · the rule engine          free · instant · offline   │
  │ settles the mail whose meaning is unambiguous                │
- └───────────────┬───────────────────────────┬──────────────────┘
-                 │                           │ cannot call it —
-       confident │                           │ or WAS confident and
-        verdict  │                           │ drew the audit sample
-                 │                           ▼
-                   ┌────────────────────────────────────────────┐
-                   │ TIER 2 · THE AI AGENT                      │
-                   │ reads the body, decides what it means,     │
-                   │ and reports which rules it had to overrule │
-                   │ — a Claude Code subagent, or the API       │
-                   └─────────────────────────┬──────────────────┘
-                 │                           │
-                 └─────────────┬─────────────┘
-                               ▼
-                       applications.csv
+ └───┬───────────────────────────────────────┬──────────────────┘
+     │ confident verdict                     │ cannot call it —
+     │                                       │ or WAS confident and
+     │                                       │ drew the audit sample
+     │                                       ▼
+     │   ┌──────────────────────────────────────────────────────┐
+     │   │ TIER 2 · THE AI AGENT                                │
+     │   │ reads the body, decides what it means,               │
+     │   │ and reports which rules it had to overrule           │
+     │   │ — a Claude Code subagent, or the API                 │
+     │   └───────────────────────────────────┬──────────────────┘
+     │                                       │
+     └───────────────────┬───────────────────┘
+                         ▼
+                 applications.csv
 
  every verdict is cached in store.json — durable, so re-runs are incremental
 ```
