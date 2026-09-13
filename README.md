@@ -352,12 +352,12 @@ step at a time.
        confident │                           │ or WAS confident and
         verdict  │                           │ drew the audit sample
                  │                           ▼
-                   ╔════════════════════════════════════════════╗
-                   ║ TIER 2 · THE AI AGENT                      ║
-                   ║ reads the body, decides what it means,     ║
-                   ║ and reports which rules it had to overrule ║
-                   ║ — a Claude Code subagent, or the API       ║
-                   ╚═════════════════════════╤══════════════════╝
+                   ┌────────────────────────────────────────────┐
+                   │ TIER 2 · THE AI AGENT                      │
+                   │ reads the body, decides what it means,     │
+                   │ and reports which rules it had to overrule │
+                   │ — a Claude Code subagent, or the API       │
+                   └─────────────────────────┬──────────────────┘
                  │                           │
                  └─────────────┬─────────────┘
                                ▼
