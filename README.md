@@ -5,7 +5,7 @@ application history.**
 
 [![tests](https://github.com/michaelxu-dev/inbox-job-tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/michaelxu-dev/inbox-job-tracker/actions/workflows/ci.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
+[![python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-skill%20%2B%20subagent-D97757.svg)](#claude-code-recommended)
 
 It monitors your inbox, identifies job-search activity, and updates your application
@@ -77,7 +77,20 @@ python -m inboxjobtracker.cli demo
 
 That prints the sample above from a synthetic mailbox and ends with the path to
 `applications.html`, which you can open in a browser. The core has zero dependencies
-and runs on any Python 3.9+.
+and runs on any Python 3.10+.
+
+## Prerequisites
+
+- **Python 3.10+**. Earlier versions (3.9) commonly have no prebuilt wheel for
+  `cryptography` (a dependency of `msal`, used by the `graph` extra for Outlook /
+  Microsoft 365), so `pip` falls back to compiling it from source with Rust — a build
+  that needs `pkg-config` and an OpenSSL install it usually can't find on macOS, and
+  fails with an `openssl-sys` / `pkg-config` error. On macOS:
+  `brew install python@3.10`, then
+  `python3.10 -m venv .venv && source .venv/bin/activate`.
+- **Git**, to clone the repo.
+- **(Optional) [Claude Code](https://claude.com/claude-code)** for the recommended
+  flow below — no separate API key needed.
 
 ## Quick Start
 
