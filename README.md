@@ -288,10 +288,11 @@ python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\Act
 pip install -e .
 ```
 
-The core has no dependencies. `pip install -e ".[graph]"` adds Outlook support and
-`".[dev]"` adds pytest; extras are additive, so `".[graph,dev]"` installs both on top of
-the base package. Want the command on your `PATH` without managing a virtualenv?
-[pipx](https://pipx.pypa.io) does it in one step: `pipx install .`
+The core has no dependencies. `pip install -e ".[graph]"` adds Outlook support,
+`".[llm]"` adds the `anthropic` package for [LLM judging](#llm-judging) outside Claude
+Code, and `".[dev]"` adds pytest; extras are additive, so `".[graph,llm,dev]"` installs
+all three on top of the base package. Want the command on your `PATH` without managing
+a virtualenv? [pipx](https://pipx.pypa.io) does it in one step: `pipx install .`
 
 ### Run
 
@@ -320,12 +321,17 @@ they're unsure about lands in that account's `review_queue.json` rather than
 being guessed at.
 
 Outside Claude Code, an API key gets those read — the same two-tier design, the same
-prompt, just billed per message instead of running in your session:
+prompt, just billed per message instead of running in your session. This needs the
+`anthropic` package, which isn't installed by default:
 
 ```bash
+pip install -e ".[llm]"                 # or add it to an existing extras list
 export ANTHROPIC_API_KEY="sk-ant-..."   # then set "judge": "on" in config.json
 inbox-job-tracker judge
 ```
+
+Skip that install and `judge` exits with a reminder to run it — `run` behaves the same
+way once `judge` is turned on in `config.json`.
 
 It reads two kinds of mail: what the rules found **uncertain**, and a rotating sample of
 what they were **confident** about. That second part matters — in practice, confidence is
