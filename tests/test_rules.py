@@ -219,6 +219,19 @@ def test_onsite_alone_is_a_work_arrangement():
     assert rules.explicit_round("The final round is with the VP.") == 3
 
 
+def test_a_preview_of_a_later_round_is_not_this_round():
+    """An Initech interview email confirming the first interview also previewed
+    what came after it - "Our 2nd interview is more technical by nature and
+    will include live coding" - and the round cue read that preview as the
+    invitation itself, promoting a first interview to a second."""
+    text = ("This interview will be conversational, covering behavioral and "
+            "technical questions. Our 2nd interview is more technical by "
+            "nature and will include live coding.")
+    assert rules.explicit_round(text) is None
+    # a genuine second-round invitation must still count
+    assert rules.explicit_round("We'd like to invite you to your second interview.") == 2
+
+
 def test_a_precondition_is_not_an_advancement():
     """"before I can move forward" is the recruiter asking for paperwork. The
     advancement is what is being withheld, not what is being offered."""

@@ -16,3 +16,6 @@ build/
 dist/
 *.egg-info/
 .pytest_cache/
+
+# macOS
+.DS_Store

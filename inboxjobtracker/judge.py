@@ -25,15 +25,30 @@ Decide which stage of an application it represents, if any.
   even if an interview is mentioned in passing.
 - "Invite to interview" - a conversation with people is offered: screen, call,
   video interview, onsite. Use this generic form; round numbers are assigned
-  separately from the order invitations arrived.
+  separately from the order invitations arrived. Only if the mail explicitly
+  states its own round ("final round", "second interview") may you write that
+  ordinal form directly ("Invite to second interview", "Invite to third
+  interview") instead - it will be honoured. A mail that merely previews a later
+  round while confirming an earlier one ("this interview is conversational; our
+  second interview includes live coding") is still the round being confirmed,
+  not the one being previewed.
 - "Unclear" - anything that is not an employer answering an application: job
   alerts, newsletters, recruiter cold pitches, account verification and sign-in
   codes, reminders for an already-booked interview, and mail about a job the
   person already holds (a termination letter reads exactly like a rejection).
 
+The rules engine already read this mail and could not call it confidently -
+that is why you are reading it. Its own guess was "%(rule_status)s": %(reason_note)s
+Confirm it or correct it; read the body and decide as if you had not been told.
+
 Also give the employer's name - never the ATS vendor (greenhouse, workday, lever,
 icims, ashby and friends). Dig it out of the subject or body when the sender is a
-vendor. Use the ordinary trading name.
+vendor. Use the ordinary trading name, and keep the spelling stable with the
+rules' own guess ("%(rule_company)s") when it already names the same employer.
+
+The rules already extracted a position ("%(rule_position)s") from the subject or
+body. Leave "position" null unless that one is wrong or missing - do not replace
+a correct title with a differently phrased one.
 
 Reply with JSON only: {"status": "...", "company": "...", "position": "...",
 "note": "one short line on why"}. Use null for company or position if the mail
@@ -44,6 +59,15 @@ From: %(from_name)s <%(from_address)s>
 
 %(body)s
 """
+
+REASON_NOTE = {
+    "uncertain": "the rules found conflicting or weak language, or no company "
+                 "name - there is no usable answer yet.",
+    "audit": "the rules were confident, and confidence is exactly where they "
+             "have been wrong before - a rejection reading \"unable to move "
+             "forward with your application\" has scored as an advance, and a "
+             "layoff letter has scored as a rejection.",
+}
 
 
 def available(cfg):
@@ -59,6 +83,11 @@ def judge_one(client, cfg, item):
             "from_name": item.get("from_name", ""),
             "from_address": item.get("from_address", ""),
             "body": (item.get("body") or "")[:4000],
+            "rule_status": item.get("rule_status") or "Unclear",
+            "reason_note": REASON_NOTE.get(
+                item.get("reason"), "the rules could not call this one confidently."),
+            "rule_company": item.get("rule_company") or "not found",
+            "rule_position": item.get("rule_position") or "not found",
         }}],
     )
     text = "".join(block.text for block in message.content if block.type == "text")

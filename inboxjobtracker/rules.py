@@ -127,6 +127,18 @@ ROUND_CUES = [
         r"phone screen|recruiter screen)\b"),
 ]
 
+# A round named while describing what it is generally like, rather than
+# confirming the mail is that round: a Motorola invitation scheduling a first
+# interview added "Our 2nd interview is more technical by nature and will
+# include live coding" to preview what came after it, and the round cue read
+# that preview as the invitation itself, promoting a first interview to a
+# second. "is/will be ... by nature" and its synonyms describe a stage in
+# general rather than confirm attendance at it, the same distinction
+# POSSIBILITY_CUE draws for advancement phrases.
+ROUND_DESCRIPTION_CUE = re.compile(
+    r"\b(by nature|in nature|typically|usually|generally|normally)\b", re.I,
+)
+
 # A NEXT pattern can appear verbatim inside a rejection ("unable to move forward
 # with your application") or inside a hypothetical in a plain receipt ("if we
 # decide to move forward with your application"). Only the run-up tells them
@@ -335,7 +347,9 @@ def advancement_kind(text):
 def explicit_round(text):
     """The round number the mail states outright, if it states one."""
     for number, pattern in ROUND_CUES:
-        if re.search(pattern, text, re.I):
+        for m in re.finditer(pattern, text, re.I):
+            if ROUND_DESCRIPTION_CUE.search(sentence_around(text, m.start(), m.end())):
+                continue
             return number
     return None
 

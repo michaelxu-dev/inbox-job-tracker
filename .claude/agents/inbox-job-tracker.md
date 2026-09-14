@@ -150,9 +150,9 @@ Rules for the fields:
     for applying, we'll review"). This is **not** an invitation. It does appear
     in the CSV, so the user can see every application that drew any reply.
   - `Unclear` — a recruiter cold-pitching a new role, a job alert, a newsletter,
-    or anything that is not a response to an application the user sent. Marketing
-    mail from LinkedIn/Indeed belongs here. This is the only status kept out of
-    the CSV.
+    an account verification or sign-in code, or anything that is not a response
+    to an application the user sent. Marketing mail from LinkedIn/Indeed belongs
+    here. This is the only status kept out of the CSV.
 - **`company`** — the **employer**, never the ATS vendor or the mail platform.
   If the sender domain is `myworkday.com`, `greenhouse.io`, `lever.co`,
   `icims.com`, `smartrecruiters.com` and friends, the real company name is in
