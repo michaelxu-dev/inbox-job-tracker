@@ -134,10 +134,18 @@ def cmd_classify(cfg, args):
         # newsletter, an account notice - for review purely because no employer
         # could be derived from it, which is exactly what should be expected.
         needs_company = record["status"] in rules.CSV_STATUSES and not company
-        if verdict["confidence"] == "low" or needs_company:
+        # A confident status says nothing about the employer, and the audit
+        # reaches acknowledgements last, so a wrong name would sit unchecked.
+        conflict = (record["status"] in rules.CSV_STATUSES
+                    and rules.company_conflict(cand, company, company_source))
+        if verdict["confidence"] == "low" or needs_company or conflict:
+            if conflict and verdict["confidence"] != "low":
+                why = ("company '%s' came from the sender domain, but the sender "
+                       "name or subject says '%s'" % (company, conflict))
+            else:
+                why = verdict["note"] or "no company name could be derived"
             review.append(rules.review_item(
-                cand, record, verdict, company, "uncertain",
-                verdict["note"] or "no company name could be derived"))
+                cand, record, verdict, company, "uncertain", why))
         elif record["status"] in rules.CSV_STATUSES and not record.get("audited"):
             # Being confident is how the rules have been wrong before, so a
             # slice of confident verdicts is checked each run too.

@@ -236,6 +236,8 @@ ATS_DOMAINS = {
     # Vendor mail/scheduling domains that are NOT just the vendor's main domain —
     # each of these shipped an employer's mail and was read as the employer.
     "greenhouse-mail.io", "kula.ai", "modernloop.io", "teamtailor-mail.com",
+    # rippling.com is also a real employer, so only its ATS host is listed.
+    "ats.rippling.com", "njoyn.com", "shl.com",
     "successfactors.com", "jobvite.com", "workable.com", "breezy.hr", "bamboohr.com",
     "recruitee.com", "teamtailor.com", "avature.net", "brassring.com", "silkroad.com",
     "jazzhr.com", "applytojob.com", "eightfold.ai", "phenompeople.com", "paylocity.com",
@@ -551,7 +553,9 @@ def company_from_name(display_name):
         display_name = right if usable else dashed.group("left")
     cleaned = NAME_NOISE.sub("", display_name or "")
     cleaned = POSSESSIVE.sub("", cleaned)
-    cleaned = re.sub(r"[|@()\[\]<>,:\-–—]+", " ", cleaned)
+    # Only a spaced dash separates ("Jane Smith - Contoso"); an unspaced one is
+    # part of the name ("D-Wave Quantum").
+    cleaned = re.sub(r"[|@()\[\]<>,:]+|\s[-–—]+\s|^[-–—]+|[-–—]+$", " ", cleaned)
     cleaned = re.sub(r"\s{2,}", " ", cleaned).strip(" .")
     # "The Wealthsimple Talent Team" is left as "The Wealthsimple"; the article
     # is not part of the name, and leaving it on makes the guard below read the
@@ -650,7 +654,9 @@ NAME_SUFFIX = re.compile(
 def name_key(name):
     """Fold spelling differences that mean the same employer: 'Gitlab'/'GitLab',
     'Contosolabs' (titlecased from a domain, which cannot know where the word
-    break goes) vs 'Contoso Labs', and 'Tucows Inc.' vs 'Tucows'."""
+    break goes) vs 'Contoso Labs', and 'Tucows Inc.' vs 'Tucows'. A suffix glued
+    on by a domain is the same employer too: 'Thalesgroup' from thalesgroup.com
+    is 'Thales' from its Workday tenant."""
     folded = re.sub(r"^the\s+", "", name.strip(), flags=re.I)
     # Repeated, because "Fabrikam Holdings Ltd." carries two of them.
     while True:
@@ -658,7 +664,15 @@ def name_key(name):
         if stripped == folded or not stripped:
             break
         folded = stripped
-    return re.sub(r"[^a-z0-9]", "", folded.casefold())
+    key = re.sub(r"[^a-z0-9]", "", folded.casefold())
+    # Only folded off a name long enough that what remains is still a name:
+    # 'Zinc' is not 'Z' incorporated.
+    glued = CORPORATE_SUFFIX.sub("", key)
+    return glued if len(glued) >= 4 else key
+
+
+CORPORATE_SUFFIX = re.compile(
+    r"(group|incorporated|inc|limited|ltd|llc|corporation|corp|plc|gmbh)$")
 
 
 # Where an ATS breaks a title into parts: "Senior Backend Engineer, AMER -
@@ -764,6 +778,26 @@ def guess_company(cand):
             text = "%s\n%s" % (cand.get("subject", ""), cand.get("body") or "")
             return restore_casing(guess, text), source
     return None, "unknown"
+
+
+def company_conflict(cand, company, source):
+    """A name read off the sender domain wins before the display name or the
+    subject are even looked at. That is how an unlisted ATS host became the
+    employer: 'Rippling' from ats.rippling.com, while both the display name and
+    the subject said D-Wave Quantum. Return the name they give when it is a
+    different employer, so the row goes to review instead of being trusted."""
+    if source != "domain" or not company:
+        return None
+    ours = name_key(company)
+    for other in (company_from_name(cand["from_name"]),
+                  company_from_text(cand["subject"], cand.get("body", ""))):
+        if not other:
+            continue
+        theirs = name_key(other)
+        # 'Coalitioninc' and 'Coalition', 'Thalesgroup' and 'Thales Group' agree.
+        if theirs and ours not in theirs and theirs not in ours:
+            return other
+    return None
 
 
 def review_item(cand, record, verdict, company, reason, why):

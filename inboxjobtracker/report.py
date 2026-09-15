@@ -151,8 +151,10 @@ def resolve_company(row, canon, by_domain):
     name = row.get("company") or "Unknown"
     address = (row.get("from_address") or "").lower()
     domain = SUBDOMAIN_NOISE.sub("", address.split("@")[-1]) if "@" in address else ""
-    resolved = by_domain.get(domain) or name
-    return canon.get(name_key(resolved), resolved)
+    # The domain's name still goes through the spelling fold: thalesgroup.com
+    # yields "Thalesgroup", which is the same employer as a Workday mail's "Thales".
+    name = by_domain.get(domain) or name
+    return canon.get(name_key(name), name)
 
 
 def canonical_positions(store, canon, by_domain):

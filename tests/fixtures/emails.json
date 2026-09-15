@@ -284,5 +284,16 @@
     "expect": "Acknowledge",
     "why": "Teamtailor sends from <tenant>.na.teamtailor-mail.com; the domain was read as the employer 'Teamtailor Mail', which split the role's title off from later mail filed under the real name",
     "body": "Hi Alex,\n\nThank you for applying for the Staff Fullstack Engineer position at Fabrikam AI. We have received your application and will be in touch."
+  },
+  {
+    "id": "d-rippling",
+    "folder": "inbox",
+    "from_name": "D-Wave Quantum",
+    "from_address": "no-reply@ats.rippling.com",
+    "received": "2026-07-29T06:01:13Z",
+    "subject": "Thank you for applying to D-Wave Quantum Inc.",
+    "expect": "Acknowledge",
+    "why": "a receipt sent through Rippling's ATS; the sender domain named the vendor and was filed as the employer, while the display name and subject both said D-Wave Quantum",
+    "body": "Hi Alex,\n\nThank you for applying to D-Wave Quantum Inc. We have received your application for the Senior Software Developer position.\n\nOur team will review your application and reach out if there is a match.\n\nD-Wave Quantum Recruiting"
   }
 ]

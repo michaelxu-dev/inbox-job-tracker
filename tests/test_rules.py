@@ -95,10 +95,44 @@ def test_advancement_needs_to_be_real(text, expected):
 @pytest.mark.parametrize("address,expected", [
     ("no-reply@us.greenhouse-mail.io", None),
     ("talent@covergenius.kula.ai", None),
+    ("no-reply@ats.rippling.com", None),
+    ("help.candidate@njoyn.com", None),
+    ("talentcentral@shl.com", None),
     ("careers@fabrikam.example", "Fabrikam"),
 ])
 def test_ats_vendors_are_never_the_employer(address, expected):
     assert rules.company_from_domain(address) == expected
+
+
+def test_ats_mail_is_filed_under_the_employer_it_names():
+    """A Rippling-hosted receipt from 'D-Wave Quantum' was filed under Rippling,
+    because the sender domain was tried before the display name and subject."""
+    email = next(e for e in EMAILS if e["id"] == "d-rippling")
+    company, _ = rules.guess_company(email)
+    assert rules.name_key(company).startswith("dwavequantum")
+
+
+def test_domain_name_contradicted_by_the_mail_is_flagged(monkeypatch):
+    """The next unlisted ATS host will repeat the Rippling mistake. The status
+    was confidently right, so the audit never reached it; the disagreement
+    between domain and display name is what has to send it to review."""
+    monkeypatch.setattr(rules, "ATS_DOMAINS", rules.ATS_DOMAINS - {"ats.rippling.com"})
+    email = next(e for e in EMAILS if e["id"] == "d-rippling")
+    company, source = rules.guess_company(email)
+    assert (company, source) == ("Rippling", "domain")
+    assert rules.company_conflict(email, company, source) == "D-Wave Quantum"
+
+
+@pytest.mark.parametrize("from_name,from_address,subject", [
+    ("Thales Group", "recruiting@jobalerts.thalesgroup.com", "Thank you for applying"),
+    ("Casey Bewley", "casey@motorolasolutions.com", "Your interview at Motorola Solutions."),
+    ("", "no-reply@coalitioninc.com", "Thank you for applying to Coalition!"),
+])
+def test_spelling_of_the_same_employer_is_not_a_conflict(from_name, from_address, subject):
+    email = {"from_name": from_name, "from_address": from_address,
+             "subject": subject, "body": ""}
+    company, source = rules.guess_company(email)
+    assert rules.company_conflict(email, company, source) is None
 
 
 def test_company_name_is_not_a_job_title():
@@ -261,6 +295,34 @@ def test_a_precondition_is_not_an_advancement():
     # the real thing still scores
     assert rules.score("We would like to move forward with your application.",
                        rules.NEXT_RULES, guarded=True)[0] > 0
+
+
+def test_employer_domain_and_ats_tenant_are_one_employer():
+    """Thales acknowledged from thalesgroup.com ("Thalesgroup") and rejected from
+    its Workday tenant ("Thales"): one application showed under two employers."""
+    def row(status, date, company, source, address):
+        return {"company": company, "company_source": source,
+                "position": "Sr Software Developer", "status": status,
+                "date": date, "received": date + "T09:00:00Z",
+                "explicit_round": None, "subject": "Thales Group",
+                "from_address": address}
+    store = {
+        "ack": row(rules.ACK, "2026-08-27", "Thalesgroup", "domain",
+                   "recruiting@jobalerts.thalesgroup.com"),
+        "rej": row(rules.REJECT, "2026-08-28", "Thales", "agent", "thales@myworkday.com"),
+    }
+    rows = report.select_rows(store, cutoff=None)
+    assert {name for _, name, _, _ in rows} == {"Thales"}
+
+
+@pytest.mark.parametrize("a,b,same", [
+    ("Thalesgroup", "Thales", True),
+    ("D-Wave Quantum Inc.", "D-Wave Quantum", True),
+    ("Coalitioninc", "Coalition", True),
+    ("Zinc", "Z", False),
+])
+def test_corporate_suffix_is_not_a_different_employer(a, b, same):
+    assert (rules.name_key(a) == rules.name_key(b)) is same
 
 
 def test_a_stated_round_cannot_outrun_the_history():
