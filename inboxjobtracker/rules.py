@@ -884,6 +884,20 @@ def classify(cand):
     elif rej >= 8 and nxt >= 8:
         status = REJECT if rej > nxt else advance
         note = "both reject and next-round language present (%d vs %d)" % (rej, nxt)
+        # A rejection that also says "next steps" or asks about availability
+        # for some other role trips both sets, and every one of them used to be
+        # queued for review however lopsided the scores. "We have made the
+        # decision to not move forward with your candidacy" scoring 23 against
+        # 10 is not a close call, and asking about it makes the review queue
+        # look busier than the mail warrants.
+        #
+        # Twice the loser, not a fixed margin: the scores are sums of weights,
+        # so a ratio says "one side is decisively better supported" at any
+        # magnitude, where a margin of 8 means different things at 16 and at 40.
+        # Anything nearer than that stays a genuine question - a rejection
+        # inviting the reader to apply again reads exactly like one.
+        if max(rej, nxt) >= 2 * min(rej, nxt):
+            confidence = "high"
     # A receipt outranks a weak reject score on purpose. The 4-and-5 weight
     # cues are sign-off pleasantries - "we wish you success in your job
     # search", "unfortunately we cannot reply to every candidate" - and they

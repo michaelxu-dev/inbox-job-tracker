@@ -511,3 +511,41 @@ def test_one_application_keeps_one_spelling():
     }
     names = {name for _, name, _, _ in report.select_rows(store, cutoff=None)}
     assert len(names) == 1
+
+
+# --- both signals at once -------------------------------------------------
+
+def _verdict(body):
+    return rules.classify({
+        "subject": "An update on your application",
+        "from_name": "Contoso Careers",
+        "from_address": "no-reply@contoso.example",
+        "body": body,
+    })
+
+
+def test_a_lopsided_mix_is_not_a_close_call():
+    """A rejection that also offers feedback trips both rule sets, and every
+    one of them was queued for review however lopsided the scores. GitLab's
+    scored 23 against 10 and sat in the queue asking a question nobody needed
+    to answer."""
+    verdict = _verdict(
+        "We regret to inform you that we will not be proceeding with your "
+        "application for the Senior Backend Engineer role. Unfortunately we have "
+        "decided to move forward with other candidates. If you would like, please "
+        "let us know your availability and we can share feedback about next steps.")
+    assert (verdict["reject_score"], verdict["next_score"]) == (35, 14)
+    assert verdict["status"] == "Reject"
+    assert verdict["confidence"] == "high"
+
+
+def test_a_close_mix_is_still_a_question():
+    """Nearer than double and it stays a real question: a rejection inviting the
+    reader to apply again reads exactly like an advancement, and no score
+    separates those two readings."""
+    verdict = _verdict(
+        "We regret to inform you that another candidate was selected for this "
+        "position. Please let us know your availability if you would like "
+        "feedback on your application.")
+    assert (verdict["reject_score"], verdict["next_score"]) == (10, 8)
+    assert verdict["confidence"] == "low"
