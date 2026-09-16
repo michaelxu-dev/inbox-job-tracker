@@ -273,5 +273,16 @@
     "expect": "Invite to first interview",
     "why": "a first-interview confirmation previewed the round after it - 'Our 2nd interview is more technical by nature' - and the round cue read that preview as this email's own round, promoting the reply to a second interview it never held",
     "body": "Hi Alex,\n\nThank you for your availability. We would like to invite you to the next stage of the interview process for the Platform Engineer role, a video call with our Engineering Manager.\n\nThis interview will be conversational, covering behavioral and technical questions. Our 2nd interview is more technical by nature and will include live coding.\n\nBest,\nInitech Talent"
+  },
+  {
+    "id": "d53",
+    "folder": "inbox",
+    "from_name": "Fabrikam AI Recruitment Team",
+    "from_address": "fabrikam-ai-recruitment-team@fabrikamai.na.teamtailor-mail.com",
+    "received": "2026-08-29T09:00:00Z",
+    "subject": "Fabrikam AI - Thank you for your application!",
+    "expect": "Acknowledge",
+    "why": "Teamtailor sends from <tenant>.na.teamtailor-mail.com; the domain was read as the employer 'Teamtailor Mail', which split the role's title off from later mail filed under the real name",
+    "body": "Hi Alex,\n\nThank you for applying for the Staff Fullstack Engineer position at Fabrikam AI. We have received your application and will be in touch."
   }
 ]
