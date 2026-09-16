@@ -20,6 +20,20 @@ SOURCE_RANK = {"agent": 0, "text": 1, "sender-name": 2, "domain": 3,
                "ats-localpart": 4, "unknown": 5}
 
 
+def spelling_rank(row):
+    """How much to trust this row's spelling of the employer's name.
+
+    Source first. Then, between two names from equally good sources, the one
+    that kept its own casing: company_from_domain has to .title() a bare domain,
+    so "ea.com" becomes "Ea", while restore_casing recovers "EA" from a mail
+    that writes it that way. Both are rank 3 and only the tie-break tells them
+    apart - without it the winner is whichever row was read first.
+    """
+    name = row.get("company") or ""
+    return (SOURCE_RANK.get(row.get("company_source"), 4),
+            0 if name != name.title() else 1)
+
+
 # Prefixes a mail carries while one interview is being arranged. Stripping them
 # lets "Contoso: Interview Request!" and its "Re:" reply be recognised
 # as one conversation rather than two invitations.
@@ -104,7 +118,7 @@ def canonical_by_domain(store):
         domain = SUBDOMAIN_NOISE.sub("", address.split("@")[-1])
         if domain in ATS_DOMAINS or any(domain.endswith("." + d) for d in ATS_DOMAINS):
             continue
-        rank = SOURCE_RANK.get(row.get("company_source"), 4)
+        rank = spelling_rank(row)
         if domain not in best or rank < best[domain][0]:
             best[domain] = (rank, name)
     return {d: n for d, (_, n) in best.items()}
@@ -118,18 +132,27 @@ def canonical_names(store):
         if not name:
             continue
         key = name_key(name)
-        rank = SOURCE_RANK.get(row.get("company_source"), 4)
+        rank = spelling_rank(row)
         if key not in best or rank < best[key][0]:
             best[key] = (rank, name)
     return {key: name for key, (_, name) in best.items()}
 
 
 def resolve_company(row, canon, by_domain):
-    """The name this mail's employer is filed under, however the mail spelled it."""
+    """The name this mail's employer is filed under, however the mail spelled it.
+
+    The two maps answer different questions, and both are needed. `by_domain`
+    joins names that never fold together - "Ea" from the domain and "Electronic
+    Arts" from a subject line. `canon` then picks one spelling for that folded
+    name, which is what stops a single application appearing as "Tucows" on its
+    receipt and "Tucows Inc" on its rejection: without the second step the
+    answer depends on which map happened to hold the row.
+    """
     name = row.get("company") or "Unknown"
     address = (row.get("from_address") or "").lower()
     domain = SUBDOMAIN_NOISE.sub("", address.split("@")[-1]) if "@" in address else ""
-    return by_domain.get(domain) or canon.get(name_key(name), name)
+    resolved = by_domain.get(domain) or name
+    return canon.get(name_key(resolved), resolved)
 
 
 def canonical_positions(store, canon, by_domain):
@@ -180,7 +203,7 @@ def select_rows(store, cutoff=None):
     lookback_days brings those rows straight back."""
     canon = canonical_names(store)
     by_domain = canonical_by_domain(store)
-    fallback = backfill_positions(store)
+    fallback = backfill_positions(store, lambda row: resolve_company(row, canon, by_domain))
     canon_position = canonical_positions(store, canon, by_domain)
 
     # One row per employer + role + date, so an application keeps its history:

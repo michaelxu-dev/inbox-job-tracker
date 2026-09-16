@@ -209,6 +209,26 @@ def test_title_variants_collapse_to_one_history():
     assert {position for _, _, position, _ in rows} == {"Senior Backend Engineer"}
 
 
+def test_untitled_booking_joins_the_role_named_under_another_spelling():
+    """A booking mail names no role, and the receipt that does was guessed
+    under another name (Treasure AI's came out as "Teamtailor Mail" from its
+    domain). Both are filed under one employer, so the title must reach the
+    booking too, or one application reads as two roles."""
+    store = {
+        "ack": {"company": "Fabrikam", "company_source": "domain",
+                "position": "Staff Fullstack Engineer", "status": "Acknowledge",
+                "date": "2026-08-29", "received": "2026-08-29T09:00:00Z",
+                "from_address": "no-reply@fabrikam.ai"},
+        "call": {"company": "Fabrikam AI", "company_source": "agent",
+                 "position": None, "status": "Invite to first interview",
+                 "date": "2026-09-01", "received": "2026-09-01T09:00:00Z",
+                 "from_address": "jane.doe@fabrikam.ai"},
+    }
+    rows = report.select_rows(store, cutoff=None)
+    assert {(name, position) for _, name, position, _ in rows} == {
+        ("Fabrikam AI", "Staff Fullstack Engineer")}
+
+
 # --- a round that never happened -------------------------------------------
 
 def test_onsite_alone_is_a_work_arrangement():
@@ -385,3 +405,109 @@ def test_the_gate_yields_to_a_real_decision():
                     "Please share your availability. If you are receiving "
                     "Employment Insurance this will not affect your application."}
     assert rules.classify(mail)["status"].startswith("Invite")
+
+
+# --- one employer, one name ----------------------------------------------
+#
+# Every case here put a single application under two employers, or under an
+# employer that does not exist. A split history is worse than a missing one:
+# the reader sees an acknowledgement with no outcome and a rejection with no
+# application, and neither row admits the other exists.
+
+@pytest.mark.parametrize("address", [
+    "mckayla.frankland@contoso.na.teamtailor-mail.com",
+    "no-reply@us.greenhouse-mail.io",
+])
+def test_vendor_mail_domains_are_not_the_employer(address):
+    """Teamtailor gives each customer its own sending domain, so the employer
+    looks like a subdomain of the vendor. Read literally it yields an employer
+    called "Teamtailor Mail", and every Teamtailor customer files under it."""
+    assert rules.company_from_domain(address) is None
+
+
+@pytest.mark.parametrize("display,expected", [
+    ("Dana Reed - Contoso", "Contoso"),
+    # Both halves name the employer, which used to produce "Contoso Contoso".
+    ("Contoso Recruitment Team - Contoso", "Contoso"),
+    # The right half is a role, not an employer, so the left half stands.
+    ("Contoso - Senior Backend Engineer", "Contoso"),
+    # ...and so does it when the right half is nothing but vendor noise.
+    ("Contoso - Careers", "Contoso"),
+])
+def test_the_employer_is_the_half_after_the_dash(display, expected):
+    assert rules.company_from_name(display) == expected
+
+
+@pytest.mark.parametrize("display,expected", [
+    # "Fabrikam Group" has exactly the shape of a person's name, and the guard
+    # against recruiters' names dropped it - leaving the employer unknown on
+    # the only mail that named it.
+    ("Fabrikam Group", "Fabrikam Group"),
+    ("Northwind Labs", "Northwind Labs"),
+    # A real personal name is still a recruiter, not the employer.
+    ("Jane Smith", None),
+])
+def test_a_company_can_be_two_words(display, expected):
+    assert rules.company_from_name(display) == expected
+
+
+def test_an_article_is_not_part_of_the_name():
+    """"The Contoso Talent Team" is Contoso. Left as "The Contoso" it reads as
+    a personal name and is dropped entirely."""
+    assert rules.company_from_name("The Contoso Talent Team") == "Contoso"
+
+
+def test_a_possessive_is_not_part_of_the_name():
+    """"Remarcable, Inc.'s Hiring Team" left the possessive attached."""
+    assert rules.name_key(rules.company_from_name("Contoso, Inc.'s Hiring Team")) \
+        == rules.name_key("Contoso")
+
+
+@pytest.mark.parametrize("variant", [
+    "Contoso Inc", "Contoso Inc.", "Contoso, Inc.", "Contoso Ltd",
+    "Contoso Limited", "Contoso LLC", "Contoso Corp.", "The Contoso",
+])
+def test_a_legal_suffix_is_not_a_different_employer(variant):
+    """The receipt said "Tucows Inc." and the rejection just "Tucows", so one
+    application appeared twice with one stage each."""
+    assert rules.name_key(variant) == rules.name_key("Contoso")
+
+
+def test_a_job_word_ends_where_the_word_ends():
+    """"For Engineering roles, this may also include a Technical Interview"
+    produced the job title "For Engineer", and filed an acknowledgement under a
+    role nobody applied for."""
+    assert rules.position_from_text(
+        "Thank you for applying to Contoso",
+        "For Engineering roles, this may also include a Technical Interview.") is None
+
+
+def test_restored_casing_beats_a_titlecased_domain():
+    """"ea.com" can only yield "Ea"; a mail that writes "EA" gives the real
+    spelling. Both come from the domain, so only the tie-break separates them,
+    and without it the winner was whichever mail was read first."""
+    rows = {
+        "a": {"company": "Ea", "company_source": "domain",
+              "from_address": "eacareers@ea.example"},
+        "b": {"company": "EA", "company_source": "domain",
+              "from_address": "eacareers@ea.example"},
+    }
+    assert report.canonical_names(rows)[rules.name_key("EA")] == "EA"
+
+
+def test_one_application_keeps_one_spelling():
+    """The receipt came through the ATS and the rejection from the employer's
+    own domain, so one map answered for each and they disagreed. The history
+    then read "Contoso" on one line and "Contoso Inc" on the next."""
+    store = {
+        "a": {"company": "Contoso Inc", "company_source": "text", "status": "Acknowledge",
+              "position": "Senior Backend Engineer", "date": "2026-08-01",
+              "received": "2026-08-01T09:00:00Z", "subject": "Thanks for applying",
+              "from_address": "no-reply@us.greenhouse-mail.io"},
+        "b": {"company": "Contoso", "company_source": "domain", "status": "Reject",
+              "position": "Senior Backend Engineer", "date": "2026-09-01",
+              "received": "2026-09-01T09:00:00Z", "subject": "An update",
+              "from_address": "no-reply@contoso.example"},
+    }
+    names = {name for _, name, _, _ in report.select_rows(store, cutoff=None)}
+    assert len(names) == 1

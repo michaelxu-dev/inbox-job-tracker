@@ -235,7 +235,7 @@ ATS_DOMAINS = {
     "icims.com", "taleo.net", "oraclecloud.com", "smartrecruiters.com", "ashbyhq.com",
     # Vendor mail/scheduling domains that are NOT just the vendor's main domain —
     # each of these shipped an employer's mail and was read as the employer.
-    "greenhouse-mail.io", "kula.ai", "modernloop.io",
+    "greenhouse-mail.io", "kula.ai", "modernloop.io", "teamtailor-mail.com",
     "successfactors.com", "jobvite.com", "workable.com", "breezy.hr", "bamboohr.com",
     "recruitee.com", "teamtailor.com", "avature.net", "brassring.com", "silkroad.com",
     "jazzhr.com", "applytojob.com", "eightfold.ai", "phenompeople.com", "paylocity.com",
@@ -249,10 +249,34 @@ SUBDOMAIN_NOISE = re.compile(
 )
 NAME_NOISE = re.compile(
     r"\b(careers?|recruit(ing|ment|er)?|talent acquisition|talent|hiring team|"
+    r"people (services|team|operations)|"
     r"human resources|hr team|hr|no-?reply|do-?not-?reply|notifications?|team|"
-    r"via workday|workday|greenhouse|lever|icims|taleo|smartrecruiters|myworkday)\b",
+    r"via workday|workday|greenhouse|lever|icims|taleo|smartrecruiters|myworkday|"
+    r"teamtailor|ashby|workable|jobvite|breezy|bamboohr|recruitee|avature)\b",
     re.I,
 )
+
+# A second word that names a kind of company, not a surname. Without this the
+# personal-name guard below reads "Thales Group" and "The Wealthsimple Talent
+# Team" (once the noise is stripped) as people, and drops the only name the mail
+# ever gives - which is how an employer ends up filed as "Unknown".
+COMPANY_WORD = re.compile(
+    r"^(group|inc|incorporated|corp|corporation|company|co|llc|ltd|limited|plc|"
+    r"labs?|technologies|technology|systems|solutions|software|digital|media|"
+    r"health|bank|capital|partners|ventures|studios?|works|industries|holdings|"
+    r"global|international|consulting|services|sciences|networks|robotics|ai)$",
+    re.I)
+
+# An ATS that mails on behalf of someone writes the sender as "Dana Reed -
+# Contoso" or "Contoso Recruitment Team - Contoso": the employer is the half
+# after the dash. The half before it is the recruiter or the team, and reading
+# that as the employer files every recruiter at a firm as a separate company -
+# or, when both halves name the employer, as "Contoso Contoso".
+SENDER_DASH = re.compile(r"^(?P<left>.+?)\s+[-–—]\s+(?P<right>.+?)\s*$")
+
+# A possessive on the sender's name is not part of it: "Remarcable, Inc.'s
+# Hiring Team" leaves "Remarcable Inc.'s" once the team is stripped.
+POSSESSIVE = re.compile(r"[''\u2019]s\b\s*$", re.I)
 
 
 ADVANCEMENT_CUES = (NEGATION_CUE, CONDITIONAL_CUE, GENERIC_SUBJECT_CUE,
@@ -514,13 +538,33 @@ def company_from_name(display_name):
     # "us. mail.io") which would otherwise beat the real name in the subject.
     if re.search(r"@|\.(com|net|org|io|ai|co|jobs|hr)\b", display_name or "", re.I):
         return None
+    # Take the half after the dash when there is one, unless it names a role
+    # rather than an employer ("Contoso - Senior Engineer") or is nothing but
+    # vendor noise once stripped ("Contoso - Careers").
+    dashed = SENDER_DASH.match(display_name or "")
+    if dashed:
+        right = dashed.group("right")
+        usable = (not re.search(JOB_WORD, right, re.I)
+                  and NAME_NOISE.sub("", right).strip(" .,-"))
+        # One side or the other, never both: keeping the whole string turns
+        # "Contoso - Senior Backend Engineer" into an employer of that name.
+        display_name = right if usable else dashed.group("left")
     cleaned = NAME_NOISE.sub("", display_name or "")
+    cleaned = POSSESSIVE.sub("", cleaned)
     cleaned = re.sub(r"[|@()\[\]<>,:\-–—]+", " ", cleaned)
     cleaned = re.sub(r"\s{2,}", " ", cleaned).strip(" .")
+    # "The Wealthsimple Talent Team" is left as "The Wealthsimple"; the article
+    # is not part of the name, and leaving it on makes the guard below read the
+    # whole thing as a person.
+    cleaned = re.sub(r"^the\s+", "", cleaned, flags=re.I).strip(" .")
     if len(cleaned) < 2 or re.fullmatch(r"[\W\d_]+", cleaned):
         return None
-    # A personal name ("Jane Smith") is a recruiter, not the employer.
-    if re.fullmatch(r"[A-Z][a-z]+ [A-Z][a-z]+", cleaned):
+    # A personal name ("Jane Smith") is a recruiter, not the employer - unless
+    # the second word names a kind of company, because "Thales Group" and
+    # "Fabrikam Labs" have exactly the shape of a person's name.
+    words = cleaned.split()
+    if (re.fullmatch(r"[A-Z][a-z]+ [A-Z][a-z]+", cleaned)
+            and not COMPANY_WORD.match(words[-1])):
         return None
     return cleaned
 
@@ -558,6 +602,11 @@ JOB_WORD = (r"(?:Engineer|Developer|Scientist|Analyst|Manager|Architect|Designer
 TITLE_WORD = r"[A-Z][\w.+/&'-]*"
 TITLE_RE = re.compile(
     r"\b((?:" + SENIORITY + r"\s+)?(?:" + TITLE_WORD + r"[ -]){0,4}" + JOB_WORD +
+    # The job word has to end where the word ends. Without this, "For
+    # Engineering roles, this may also include a Technical Interview" yields the
+    # job title "For Engineer", and an acknowledgement is filed under a role
+    # nobody applied for.
+    r"\b"
     r"(?:\s+(?:I{1,3}|IV|V|\d))?"
     r"(?:,\s*" + TITLE_WORD + r"(?:[ &/-]+" + TITLE_WORD + r"){0,4})?"
     r"(?:\s*\([^)]{1,28}\))?)"
@@ -590,11 +639,26 @@ def position_from_text(subject, body):
     return None
 
 
+# A legal suffix is decoration, not identity: the acknowledgement says "Tucows
+# Inc." and the rejection just "Tucows", and folding on the raw string files one
+# employer as two.
+NAME_SUFFIX = re.compile(
+    r"\b(inc|incorporated|corp|corporation|co|llc|l\.l\.c|ltd|limited|plc|"
+    r"gmbh|ag|sa|nv|bv|oy|ab|as|pty|pte|srl|spa|kk)\b\.?\s*$", re.I)
+
+
 def name_key(name):
     """Fold spelling differences that mean the same employer: 'Gitlab'/'GitLab',
-    and 'Contosolabs' (titlecased from a domain, which cannot know where
-    the word break goes) vs 'Contoso Labs'."""
-    return re.sub(r"[^a-z0-9]", "", name.casefold())
+    'Contosolabs' (titlecased from a domain, which cannot know where the word
+    break goes) vs 'Contoso Labs', and 'Tucows Inc.' vs 'Tucows'."""
+    folded = re.sub(r"^the\s+", "", name.strip(), flags=re.I)
+    # Repeated, because "Fabrikam Holdings Ltd." carries two of them.
+    while True:
+        stripped = NAME_SUFFIX.sub("", folded).strip(" .,")
+        if stripped == folded or not stripped:
+            break
+        folded = stripped
+    return re.sub(r"[^a-z0-9]", "", folded.casefold())
 
 
 # Where an ATS breaks a title into parts: "Senior Backend Engineer, AMER -
@@ -637,13 +701,20 @@ def position_key(position):
     return re.sub(r"[^a-z0-9]", "", key)
 
 
-def backfill_positions(store):
+def backfill_positions(store, company_of=None):
     """Scheduling and reminder mail ("Your interview with GitLab is scheduled")
-    names no role. Reuse a title seen in any other mail from that employer."""
+    names no role. Reuse a title seen in any other mail from that employer.
+
+    `company_of` gives the name a row is filed under. Keying on the raw guess
+    missed employers whose mails disagree on the name: Treasure AI's receipt was
+    guessed as "Teamtailor Mail" from its ATS domain, so the title it carried
+    never reached the interview booking filed as "Treasure AI"."""
+    company_of = company_of or (lambda row: row.get("company"))
     by_company = {}
     for row in store.values():
-        if row.get("position") and row.get("company"):
-            by_company.setdefault(name_key(row["company"]), row["position"])
+        name = company_of(row)
+        if row.get("position") and name:
+            by_company.setdefault(name_key(name), row["position"])
     return by_company
 
 
