@@ -295,5 +295,27 @@
     "expect": "Acknowledge",
     "why": "a receipt sent through Rippling's ATS; the sender domain named the vendor and was filed as the employer, while the display name and subject both said D-Wave Quantum",
     "body": "Hi Alex,\n\nThank you for applying to D-Wave Quantum Inc. We have received your application for the Senior Software Developer position.\n\nOur team will review your application and reach out if there is a match.\n\nD-Wave Quantum Recruiting"
+  },
+  {
+    "id": "d55",
+    "folder": "inbox",
+    "from_name": "Northwind Hiring Team",
+    "from_address": "no-reply@ashbyhq.com",
+    "received": "2026-09-02T17:00:00Z",
+    "subject": "Update from Northwind Robotics - Thank you!",
+    "expect": "Reject",
+    "why": "the requisition was closed: 'the ... position has now been closed' ends the application, but no reject rule matched it and the 'thank you for your interest' made it a receipt",
+    "body": "Hi Alex,\n\nThank you so much for your interest in Northwind Robotics. There is an update on our side and we want to inform you that the Senior Software Engineer, Full Stack | Product Engineering - Canada position has now been closed.\n\nWe would love to stay in touch and reconnect as new opportunities become available in the future, so please keep an eye on our careers page.\n\nIn the meantime, we sincerely wish you all the best.\n\nKind Regards,\n\nNorthwind Robotics"
+  },
+  {
+    "id": "d56",
+    "folder": "inbox",
+    "from_name": "Fabrikam Careers",
+    "from_address": "no-reply@us.greenhouse-mail.io",
+    "received": "2026-09-03T17:00:00Z",
+    "subject": "Thank you for applying to Fabrikam",
+    "expect": "Acknowledge",
+    "why": "a receipt that says what happens IF the position is closed; the closed-position reject rule must not fire on the hypothetical",
+    "body": "Hi Alex,\n\nThanks for applying to Fabrikam! We've received your application for the Backend Developer role.\n\nIf the position is closed before we review your application, we will let you know by email.\n\nOur team will review your application and reach out if there is a match."
   }
 ]

@@ -63,6 +63,14 @@ REJECT_RULES = [
          r"(not to|to not) (proceed|move forward|continue|advance)"),
     (8, r"(unable|not able) to (move forward|proceed|continue|progress)"),
     (8, r"filled (the|this) (position|role)"),
+    # Closing the requisition ends the application as surely as a decline, but
+    # says so about the job rather than the candidate: "the Senior Software
+    # Engineer, Full Stack | Product Engineering - Canada position has now been
+    # closed" from TRM Labs matched nothing here and was filed as a receipt on
+    # its "thank you for your interest". The hypothetical form ("if the position
+    # is closed") is already taken back by CONDITIONAL_CUE.
+    (8, r"\b(position|role|requisition|job|opening|vacancy|posting) (has|is|was) "
+        r"(now )?(been )?(closed|cancel+ed|withdrawn|filled)\b"),
     (6, r"keep your (resume|application|details) on file"),
     (5, r"\bunfortunately\b"),
     (4, r"other candidates whose (qualifications|experience)"),
@@ -176,6 +184,10 @@ CONDITIONAL_CUE = re.compile(
     r"|\bif (you (see|notice|find|do not hear|don'?t hear|have not heard|"
     r"haven'?t heard)|the (job|position|role|req\w*|status|posting)\s+"
     r"(is|was|has been|moves?|moved|becomes?|appears?))\b[^.!?;\n]*$"
+    # The same condition when the match itself is the subject: a rule that
+    # starts on "position" ("position is closed") sees only "If the " before
+    # it, so the alternative above, which needs the noun, never gets the chance.
+    r"|\bif (the|this|that|your)\s+$"
     r"|\bin the event\b[^.!?;\n]*$", re.I,
 )
 # An advancement named as what has *not* happened yet is a request for
