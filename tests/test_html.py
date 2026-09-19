@@ -93,3 +93,44 @@ def test_write_html_round_trips(tmp_path):
     page = out.read_text(encoding="utf-8")
     assert page.startswith("<!doctype html>")
     assert "Acme" in page and os.path.getsize(str(out)) > 1000
+
+
+def test_an_interview_that_ended_in_rejection_still_has_a_filter():
+    """Filtering on the furthest stage offered no interview chip at all once
+    every interview had been rejected, which is how three real interviews
+    disappeared from the page's filters."""
+    rows = [stage("GitLab", "Eng", "Acknowledge", "2026-08-29"),
+            stage("GitLab", "Eng", "Invite to first interview", "2026-08-30"),
+            stage("GitLab", "Eng", "Reject", "2026-09-09"),
+            stage("Acme", "Eng", "Acknowledge", "2026-08-01")]
+    counts = dict(html_mod.chip_counts(html_mod.group_applications(rows)))
+    assert counts["Invite to first interview"] == 1
+    assert counts["Acknowledge"] == 2
+    assert counts["Reject"] == 1
+    # Waiting is about where an application stands now, not where it has been.
+    assert counts[html_mod.WAITING] == 1
+
+
+def test_no_filter_is_offered_for_a_stage_nobody_reached():
+    rows = [stage("Acme", "Eng", "Acknowledge", "2026-08-01")]
+    counts = dict(html_mod.chip_counts(html_mod.group_applications(rows)))
+    assert "Invite to test" not in counts and "Reject" not in counts
+
+
+def test_every_chip_the_page_offers_can_list_something():
+    """A chip and the filter behind it have to agree, or the page offers a
+    filter that empties the table."""
+    rows = [stage("GitLab", "Eng", "Acknowledge", "2026-08-29"),
+            stage("GitLab", "Eng", "Invite to first interview", "2026-08-30"),
+            stage("GitLab", "Eng", "Reject", "2026-09-09"),
+            stage("Acme", "Eng", "Invite to test", "2026-08-02")]
+    apps = html_mod.group_applications(rows)
+    page = html_mod.render(apps, "outlook", len(rows))
+    offered = re.findall(r'data-status="([^"]*)"', page)
+    assert offered[0] == ""  # the All chip clears the filter
+    for status, count in html_mod.chip_counts(apps):
+        assert status in offered
+        listed = [a for a in apps
+                  if (a["reached"] == status if status == html_mod.WAITING
+                      else any(s["status"] == status for s in a["stages"]))]
+        assert len(listed) == count > 0

@@ -76,6 +76,32 @@ def group_applications(rows):
     return out
 
 
+CHIP_STATUSES = [WAITING, "Acknowledge", "Invite to test",
+                 "Invite to first interview", "Invite to second interview",
+                 "Invite to third interview", "Reject"]
+
+
+def chip_counts(apps):
+    """The filters to offer, and how many applications each one lists.
+
+    Counted the way the page filters: a stage counts wherever it appears in an
+    application's history, so an interview that ended in a rejection still has
+    a chip and still has that application under it. Only "No reply yet" is
+    counted on the stage reached, because it describes where the application
+    stands now. A filter that would list nothing is not offered.
+    """
+    counts = []
+    for status in CHIP_STATUSES:
+        if status == WAITING:
+            count = sum(1 for a in apps if a["reached"] == WAITING)
+        else:
+            count = sum(1 for a in apps
+                        if any(s["status"] == status for s in a["stages"]))
+        if count:
+            counts.append((status, count))
+    return counts
+
+
 def summarise(apps):
     """The counts worth putting at the top of the page."""
     advanced = [a for a in apps
@@ -182,8 +208,23 @@ function haystack(a) {
   }
   return t.toLowerCase();
 }
+function passes(a) {
+  // Filtering on the furthest stage alone hid every interview the moment its
+  // rejection arrived: three interviews in a real mailbox all ended in one, so
+  // "Invite to first interview" listed nothing and was not even offered. A
+  // stage the application passed through still happened, so the stage chips
+  // match anywhere in its history. "No reply yet" is the exception - it is a
+  // statement about the present, and an application that went on to be
+  // rejected is no longer waiting.
+  if (!filter) return true;
+  if (filter === DATA.waiting) return a.reached === filter;
+  for (var i = 0; i < a.stages.length; i++) {
+    if (a.stages[i].status === filter) return true;
+  }
+  return false;
+}
 function match(a) {
-  if (filter && a.reached !== filter) return false;
+  if (!passes(a)) return false;
   var t = q.value.trim().toLowerCase();
   return !t || haystack(a).indexOf(t) !== -1;
 }
@@ -243,10 +284,11 @@ var chips = document.querySelectorAll(".chip");
 for (var i = 0; i < chips.length; i++) {
   chips[i].onclick = function () {
     var want = this.getAttribute("data-status");
-    filter = (filter === want) ? null : want;
+    // The "All" chip carries an empty status, which is what no filter is.
+    filter = (!want || filter === want) ? null : want;
     for (var j = 0; j < chips.length; j++) {
       chips[j].setAttribute("aria-pressed",
-        String(chips[j].getAttribute("data-status") === filter));
+        String(chips[j].getAttribute("data-status") === (filter || "")));
     }
     render();
   };
@@ -271,19 +313,15 @@ def render(apps, account, source_rows):
     stats = "".join(
         '<div class="stat"><b>%s</b><span>%s</span></div>' % (e(str(value)), e(label))
         for label, value in summarise(apps))
-    # Only offer a filter for statuses that are actually present.
-    present = []
-    for status in ["No reply yet", "Invite to test", "Invite to first interview",
-                   "Invite to second interview", "Invite to third interview", "Reject"]:
-        if any(a["reached"] == status for a in apps):
-            present.append(status)
-    chips = "".join(
-        '<button class="chip" data-status="%s" aria-pressed="false">%s</button>'
-        % (e(status), e(status)) for status in present)
+    chips = '<button class="chip" data-status="" aria-pressed="true">All %d</button>' % len(apps)
+    chips += "".join(
+        '<button class="chip" data-status="%s" aria-pressed="false">%s %d</button>'
+        % (e(status), e(status), count) for status, count in chip_counts(apps))
 
     payload = {
         "apps": apps,
         "cls": STATUS_CLASS,
+        "waiting": WAITING,
         "order": {s: i for s, i in STAGE_ORDER.items()},
     }
     payload["order"][WAITING] = -1
