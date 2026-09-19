@@ -102,16 +102,27 @@ def chip_counts(apps):
     return counts
 
 
+def ever_reached(app, prefix):
+    """Did this application ever get this far, whatever happened afterwards?"""
+    return any(s["status"].startswith(prefix) for s in app["stages"])
+
+
 def summarise(apps):
-    """The counts worth putting at the top of the page."""
+    """The counts worth putting at the top of the page.
+
+    Counted over the whole history, like the filters: an interview that ended
+    in a rejection was still an interview. Reading only the furthest stage put
+    every rejected interview under Rejections alone, and three real interviews
+    went missing from the count of interviews and tests.
+    """
     advanced = [a for a in apps
-                if a["reached"].startswith("Invite") or a["reached"] == "Reject"]
-    interviews = [a for a in apps if a["reached"].startswith("Invite")]
+                if ever_reached(a, "Invite") or ever_reached(a, "Reject")]
+    interviews = [a for a in apps if ever_reached(a, "Invite")]
     return [
         ("Applications", len(apps)),
         ("Employers", len({name_key(a["company"]) for a in apps})),
         ("Interviews or tests", len(interviews)),
-        ("Rejections", len([a for a in apps if a["reached"] == "Reject"])),
+        ("Rejections", len([a for a in apps if ever_reached(a, "Reject")])),
         ("No reply yet", len([a for a in apps if a["reached"] == WAITING])),
         # Any answer beyond the automatic receipt counts as a reply - a rejection
         # is a reply. Rate over applications, not over messages.

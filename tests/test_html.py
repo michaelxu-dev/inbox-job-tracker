@@ -134,3 +134,33 @@ def test_every_chip_the_page_offers_can_list_something():
                   if (a["reached"] == status if status == html_mod.WAITING
                       else any(s["status"] == status for s in a["stages"]))]
         assert len(listed) == count > 0
+
+
+def test_a_rejected_interview_still_counts_as_an_interview():
+    """The tiles count over the whole history, like the filters do. Counting
+    the furthest stage alone hid three real interviews behind their
+    rejections, so the page said 3 interviews or tests while its own chips
+    said 3 tests and 3 interviews."""
+    rows = [stage("GitLab", "Eng", "Acknowledge", "2026-08-29"),
+            stage("GitLab", "Eng", "Invite to first interview", "2026-08-30"),
+            stage("GitLab", "Eng", "Reject", "2026-09-09"),
+            stage("Acme", "Eng", "Invite to test", "2026-08-02"),
+            stage("Zeta", "Eng", "Acknowledge", "2026-08-01")]
+    stats = dict(html_mod.summarise(html_mod.group_applications(rows)))
+    assert stats["Interviews or tests"] == 2
+    assert stats["Rejections"] == 1
+    assert stats["No reply yet"] == 1
+
+
+def test_the_tiles_and_the_chips_agree():
+    rows = [stage("GitLab", "Eng", "Invite to first interview", "2026-08-30"),
+            stage("GitLab", "Eng", "Reject", "2026-09-09"),
+            stage("Acme", "Eng", "Invite to test", "2026-08-02"),
+            stage("Zeta", "Eng", "Acknowledge", "2026-08-01")]
+    apps = html_mod.group_applications(rows)
+    stats = dict(html_mod.summarise(apps))
+    chips = dict(html_mod.chip_counts(apps))
+    invited = sum(n for s, n in chips.items() if s.startswith("Invite"))
+    assert stats["Interviews or tests"] == invited
+    assert stats["Rejections"] == chips["Reject"]
+    assert stats["No reply yet"] == chips[html_mod.WAITING]
