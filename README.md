@@ -276,6 +276,63 @@ cache in `token_cache-<account name>.json` — so one mailbox's history never me
 another's, and each spreadsheet covers one inbox. A config with no `accounts` block still
 describes a single mailbox the flat way, exactly as before.
 
+### Any other provider — QQ, 163, iCloud, a company server
+
+Nothing about a provider is hardcoded. `imap_host`, `imap_port`, `imap_user` and
+`imap_folders` are all config, so any server that speaks IMAP works:
+
+```json
+"accounts": {
+  "qq": {
+    "source": "imap",
+    "imap_host": "imap.qq.com",
+    "imap_port": 993,
+    "imap_user": "you@qq.com",
+    "imap_folders": ["INBOX"],
+    "password_env": "QQ_APP_PASSWORD"
+  }
+}
+```
+
+Most Chinese providers call the app password an **authorization code** and make you
+turn IMAP on first — QQ under Settings → Account, 163 under Settings → POP3/SMTP/IMAP.
+The code goes in the environment variable, never the account password.
+
+**Hotmail.com and Outlook.com are the exception, and not because of this tool.**
+Microsoft has switched off basic authentication for personal accounts, so IMAP
+refuses any password you give it. Those mailboxes need `"source": "graph"` — see
+[docs/outlook-setup.md](docs/outlook-setup.md).
+
+### Where the password lives, and why it is not hashed
+
+**No password is ever written to `config.json`.** The file holds only the *name* of an
+environment variable:
+
+```json
+"password_env": "GMAIL_APP_PASSWORD"
+```
+
+and the code reads `os.environ.get(...)` at connect time (defaulting to `IMAP_PASSWORD`
+if the key is absent). So `config.json` can be committed, shared or pasted into an issue
+without leaking anything. If you find a password in yours, it was put there by hand and
+should be moved out.
+
+**Hashing it is not possible**, and not a limitation worth working around. IMAP's LOGIN
+verifies the password itself, so the client has to send the real thing; a hash is
+one-way, and nothing can be recovered from it to log in with. Every mail client faces
+this — Apple Mail and Outlook hold a recoverable secret too.
+
+What actually protects you is three things, in order of effect:
+
+1. **Use an app password, never your main one.** It can read and send mail and nothing
+   else: it cannot sign in to the account, change the password, or survive being
+   revoked from the provider's security page.
+2. **Keep it out of files** — the environment variable, which is what this project does.
+3. **Remember the environment is not a vault.** It survives in shell history and is
+   readable from the process table. For a shared or multi-user machine, the stronger
+   answer is the system keychain (macOS Keychain, Windows Credential Manager) through
+   the `keyring` package. That is not wired up here yet.
+
 ## Terminal mode
 
 Everything works without Claude Code. The rules tier is identical; only the judgement
