@@ -93,7 +93,13 @@ NEXT_RULES = [
     # we'll be in touch" — which promises nothing.
     (7, r"we (have |'ve )?selected you (to|for) (move|advance|continue|the next)"),
     (7, r"advance(d)? to the next"),
-    (6, r"\bnext steps?\b"),
+    # "Take the next step in your career journey" is a newsletter's closing
+    # flourish, not a stage. A community employment bulletin advertising a job
+    # fair was published as a first interview on the strength of that phrase
+    # alone. "Next steps in your application" is still an advancement; it is
+    # only the career-advice idiom that is excluded.
+    (6, r"\bnext steps?\b(?!\s+(in|on|of)\s+(your|their|the)\s+"
+        r"(career|job search|job-search|journey|professional))"),
     (5, r"looking forward to (speaking|meeting|chatting)"),
 ]
 

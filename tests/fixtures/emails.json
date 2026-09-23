@@ -317,5 +317,38 @@
     "expect": "Acknowledge",
     "why": "a receipt that says what happens IF the position is closed; the closed-position reject rule must not fire on the hypothetical",
     "body": "Hi Alex,\n\nThanks for applying to Fabrikam! We've received your application for the Backend Developer role.\n\nIf the position is closed before we review your application, we will let you know by email.\n\nOur team will review your application and reach out if there is a match."
+  },
+  {
+    "id": "n1",
+    "folder": "inbox",
+    "from_name": "S.U.C.C.E.S.S.",
+    "from_address": "no-reply@communications.success.bc.ca",
+    "received": "2026-09-11T17:32:00Z",
+    "subject": "Employment and Settlement Updates - September 11",
+    "expect": "Unclear",
+    "why": "a settlement agency's bulletin advertising a job fair; 'take the next step in your career journey' is a newsletter flourish, and it was published as a first interview on the strength of that phrase alone",
+    "body": "Please see the employment and settlement information below.\n\n1. Burnaby Fair\n2. Surrey Job Fair\n\nSettlement and Family Program is hosting a Job Fair at the Guildford Branch! Free event!\n\nJoin our Job fair to connect with employers, explore career opportunities, and learn about employment supports available in your community.\n\nMon, Oct 5, 2026, 1:00 p.m. - 4:00 p.m.\n\nConfirmed participants include TD Bank, Canada Post, Universal Group.\n\nDon't miss this opportunity to connect with employers, expand your network, and take the next step in your career journey. We look forward to seeing you there!\n\nChange your communication preferences\nUnsubscribe from future mailings"
+  },
+  {
+    "id": "n2",
+    "folder": "inbox",
+    "from_name": "Indeed Job Alerts",
+    "from_address": "donotreply@jobalert.indeed.com",
+    "received": "2026-07-11T05:53:00Z",
+    "subject": "Web Developer at ShearComfort Ltd. and 2 more new jobs",
+    "expect": "Unclear",
+    "why": "a saved-search job alert; names employers and roles but answers no application",
+    "body": "3 new react opportunities in Vancouver, BC\nThese jobs match your saved job alert\n\nWeb Developer\nShearComfort Ltd.\nVancouver, BC\n$55,000-$75,000 a year\nEasily apply\n\nSenior Full Stack Software Engineer (ON, BC, or AB)\nSquare One Insurance Services\nVancouver, BC\nEasily apply\n\nSenior Frontend Engineer\nRoofr\nVancouver, BC\nEasily apply\n\nView all jobs\nManage this job alert\nUnsubscribe"
+  },
+  {
+    "id": "n3",
+    "folder": "inbox",
+    "from_name": "LinkedIn",
+    "from_address": "updates-noreply@linkedin.com",
+    "received": "2026-09-10T20:38:00Z",
+    "subject": "Joanna Ram recently posted",
+    "expect": "Unclear",
+    "why": "a feed digest; recruiters posting that they are hiring is not an employer replying to you",
+    "body": "Joanna Ram\nSenior Talent Acquisition Business Partner at iRhythm\nFollow\n\nWe're Hiring: Senior Director, IT Digital Transformation At iRhythm, we're seeking a Senior Director, IT... see more\n\nBrian Brady\nCGO, President, SVP, Top 40 Under 40 winner\nFollow\n\nHello network... urgent request for 5 bilingual software testers.\n\nBilingual Software Tester (French First) - Remote Position | Oomple"
   }
 ]
