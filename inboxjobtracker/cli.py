@@ -101,7 +101,7 @@ def cmd_classify(cfg, args):
             counts[prior["status"]] = counts.get(prior["status"], 0) + 1
             # The verdict is the judge's, but position and evidence are derived
             # from the mail, so they refresh whenever the rules improve.
-            if prior.get("position_source") != "agent":
+            if prior.get("position_source") not in ("agent", "user"):
                 prior["position"] = rules.position_from_text(
                     cand["subject"], cand.get("body", ""))
             prior["evidence"] = rules.evidence_sentence(
@@ -205,9 +205,11 @@ def cmd_merge(cfg, args):
         if not rec:
             continue
         if dec.get("company"):
-            rec["company"], rec["company_source"] = dec["company"], "agent"
+            if rec.get("company_source") != "user":
+                rec["company"], rec["company_source"] = dec["company"], "agent"
         if dec.get("position"):
-            rec["position"], rec["position_source"] = dec["position"], "agent"
+            if rec.get("position_source") != "user":
+                rec["position"], rec["position_source"] = dec["position"], "agent"
         was = rec.get("status")
         rec["status"] = store_mod.LEGACY_STATUS.get(dec["status"], dec["status"])
         rec["agent_status"] = rec["status"]

@@ -16,7 +16,9 @@ from .rules import (ACK, ATS_DOMAINS, backfill_positions, name_key,
                     REJECT, STAGE_ORDER, SUBDOMAIN_NOISE)
 
 
-SOURCE_RANK = {"agent": 0, "text": 1, "sender-name": 2, "domain": 3,
+# "user" is a correction someone typed. Nothing derived outranks it, and the
+# iOS app writes it into the same store.json this reads.
+SOURCE_RANK = {"user": -1, "agent": 0, "text": 1, "sender-name": 2, "domain": 3,
                "ats-localpart": 4, "unknown": 5}
 
 
