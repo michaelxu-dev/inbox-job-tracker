@@ -325,6 +325,21 @@ def test_corporate_suffix_is_not_a_different_employer(a, b, same):
     assert (rules.name_key(a) == rules.name_key(b)) is same
 
 
+@pytest.mark.parametrize("a,b,same", [
+    # A company whose name is its domain: the acknowledgement came through an
+    # ATS as "Super", the interview invitation from the company itself as
+    # "Super.com", and they were two applications that never joined.
+    ("Super.com", "Super", True),
+    ("Monzo.io", "Monzo", True),
+    # Only a literal dotted ending. Stripping "com" after the punctuation has
+    # gone would file these under "Inter" and "Tele".
+    ("Intercom", "Inter", False),
+    ("Telecom Italia", "Tele Italia", False),
+])
+def test_a_domain_ending_is_not_a_different_employer(a, b, same):
+    assert (rules.name_key(a) == rules.name_key(b)) is same
+
+
 def test_a_stated_round_cannot_outrun_the_history():
     """Whatever wording claims, a first interview is a first interview: there is
     no third without a second. The cap is what makes the class impossible."""

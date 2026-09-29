@@ -669,6 +669,9 @@ NAME_SUFFIX = re.compile(
     r"gmbh|ag|sa|nv|bv|oy|ab|as|pty|pte|srl|spa|kk)\b\.?\s*$", re.I)
 
 
+WEB_SUFFIX = re.compile(r"\.(com|io|ai|co|net|org|app|dev)$", re.I)
+
+
 def name_key(name):
     """Fold spelling differences that mean the same employer: 'Gitlab'/'GitLab',
     'Contosolabs' (titlecased from a domain, which cannot know where the word
@@ -682,6 +685,12 @@ def name_key(name):
         if stripped == folded or not stripped:
             break
         folded = stripped
+    # A company whose name is its domain answers from both: "Super.com" in its
+    # own mail and "Super" through an ATS are one employer with one history, and
+    # without this they are two entries that never join. Only a literal dotted
+    # ending, and only before the punctuation is stripped - matching "com" after
+    # that would fold Intercom into Inter and Telecom into Tele.
+    folded = WEB_SUFFIX.sub("", folded)
     key = re.sub(r"[^a-z0-9]", "", folded.casefold())
     # Only folded off a name long enough that what remains is still a name:
     # 'Zinc' is not 'Z' incorporated.
