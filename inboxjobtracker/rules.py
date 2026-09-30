@@ -877,7 +877,21 @@ def classify(cand):
             "reject_hits": rej_hits, "next_hits": nxt_hits,
         }
 
-    if is_job_board(cand.get("from_address")) and rej < 8 and nxt < 8:
+    # No yield clause. It used to read `and rej < 8 and nxt < 8`, on the
+    # reasoning that a real decision relayed by a board should still win. What
+    # that let through, found on a real mailbox in September 2026, was a
+    # LinkedIn notification digest whose *marketing copy* scored 10: a stranger's
+    # post reading `Rest in peace, "Book a call" or "Demo"` matched the
+    # "book a call" cue and was filed as an invitation to a first interview. An
+    # Indeed alert went the same way.
+    #
+    # The scorer reads a digest as though every sentence in it were the sender
+    # speaking to the reader, and on these domains that is never what it is:
+    # LinkedIn and Indeed send adverts, digests and notifications, and an
+    # employer's actual decision arrives from the employer's own domain or from
+    # an ATS. The address is a fact, not a guess, and it outranks a score read
+    # out of somebody else's advertising.
+    if is_job_board(cand.get("from_address")):
         return {
             "status": UNCLEAR, "confidence": "high",
             "note": "job board advertising openings, not a reply to an application",

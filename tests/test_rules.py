@@ -626,3 +626,47 @@ def test_a_close_mix_is_still_a_question():
         "feedback on your application.")
     assert (verdict["reject_score"], verdict["next_score"]) == (10, 8)
     assert verdict["confidence"] == "low"
+
+
+def test_a_job_board_advert_is_not_an_interview_however_it_scores():
+    """Found on a real mailbox in September 2026, three at once, all filed as
+    "Invite to first interview".
+
+    The gate used to yield to a confident score - `rej < 8 and nxt < 8` - so
+    that a real decision relayed by a board would still win. What actually came
+    through was a LinkedIn notification digest in which a *stranger's* post read
+    `Rest in peace, "Book a call" or "Demo"`, matching the "book a call" cue for
+    10 points. The scorer reads a digest as though every sentence in it were the
+    sender speaking to the reader; on these domains it never is.
+    """
+    digest = rules.classify({
+        "subject": "Saritha Ramesh at Amazon commented on Trevor Ramos' post: "
+                   "Super happy for you :) Congratulations!!",
+        "from_name": "LinkedIn",
+        "from_address": "notifications-noreply@linkedin.com",
+        "body": 'Rumman Sadiq posted: Don\'t call us mad for flipping the '
+                'entire process. Rest in peace, "Book a call" or "Demo"',
+    })
+    assert digest["status"] == rules.UNCLEAR
+    assert digest["confidence"] == "high"
+    # The score is still computed and still high. That it no longer decides
+    # anything here is the point.
+    assert digest["next_score"] >= 8
+
+    alert = rules.classify({
+        "subject": "Web Developer at ShearComfort Ltd. and 2 more new jobs",
+        "from_name": "Indeed Job Alerts",
+        "from_address": "donotreply@jobalert.indeed.com",
+        "body": "3 new react opportunities in Vancouver, BC. Jobs 1-3 of 3 new "
+                "jobs. Easily apply. Schedule an interview with employers.",
+    })
+    assert alert["status"] == rules.UNCLEAR
+    assert alert["confidence"] == "high"
+
+
+def test_a_subdomain_of_a_job_board_is_still_a_job_board():
+    """Indeed sends its alerts from jobalert.indeed.com, not indeed.com. An
+    exact-match gate would have missed every one of them."""
+    assert rules.is_job_board("donotreply@jobalert.indeed.com")
+    assert rules.is_job_board("updates-noreply@linkedin.com")
+    assert not rules.is_job_board("careers@indeed-partner.example")
