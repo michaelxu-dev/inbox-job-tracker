@@ -670,3 +670,54 @@ def test_a_subdomain_of_a_job_board_is_still_a_job_board():
     assert rules.is_job_board("donotreply@jobalert.indeed.com")
     assert rules.is_job_board("updates-noreply@linkedin.com")
     assert not rules.is_job_board("careers@indeed-partner.example")
+
+
+def test_a_bulletin_about_other_people_is_not_an_answer_to_you():
+    """The scorer's founding assumption - that a sentence in the body is the
+    sender speaking to the reader about their application - is false for a
+    digest, which is a dozen strangers' posts stapled together.
+
+    The score is deliberately still high here. A gate that yielded to it would
+    be decorative, because the score is read out of the very text the gate says
+    is not addressed to the reader.
+    """
+    verdict = rules.classify({
+        "subject": "Jane commented on your post",
+        "from_name": "Some Network",
+        "from_address": "no-reply@social.example",
+        "body": "Jane commented on Bob's post: Congratulations! Book a call with us.",
+    })
+    assert verdict["status"] == rules.UNCLEAR
+    assert verdict["confidence"] == "high"
+    assert verdict["next_score"] >= 8
+
+
+def test_a_list_of_openings_is_an_advert_from_any_domain():
+    """Job boards are gated by address, but the same adverts arrive relayed,
+    white-labelled and from domains no list will ever hold."""
+    verdict = rules.classify({
+        "subject": "10 new jobs matching your search",
+        "from_name": "Careers Digest",
+        "from_address": "alerts@somewhere.example",
+        "body": "10 new jobs match your search in Vancouver. Easily apply.",
+    })
+    assert verdict["status"] == rules.UNCLEAR
+
+
+def test_an_employers_own_reply_is_not_a_bulletin():
+    """The guard on the guard. `unsubscribe` is deliberately not a marker: ATS
+    mail carries it constantly, and gating on it would throw away real
+    rejections and real invitations."""
+    for body in [
+        "Thank you for applying. Easily track your application status here. "
+        "Unsubscribe from these emails.",
+        "We would like to schedule a call with you next week.",
+        "We regret to inform you that we will not be moving forward.",
+    ]:
+        verdict = rules.classify({
+            "subject": "Your application",
+            "from_name": "Contoso",
+            "from_address": "no-reply@contoso.example",
+            "body": body,
+        })
+        assert "bulletin" not in verdict["note"], body

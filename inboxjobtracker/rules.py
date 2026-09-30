@@ -501,6 +501,38 @@ EMPLOYMENT_LIFECYCLE = re.compile(
 # talks about jobs, applications and next steps, which is exactly what the
 # job-context gate looks for. "Your next step after applying for Employment
 # Insurance is to set up your Job Bank account" scored as an interview.
+# Mail that is a bulletin about other people, or a list of openings, rather than
+# anybody writing to the reader.
+#
+# The scorer's founding assumption is that a sentence in the body is the sender
+# speaking to the reader about their application. For a digest that assumption
+# is simply false: a LinkedIn notification mail is a dozen strangers' posts
+# stapled together, and a job alert is three adverts. The cue that decided one
+# of these was `Rest in peace, "Book a call" or "Demo"` - somebody's joke about
+# sales patter, scored as an invitation.
+#
+# Only markers that an employer's own reply would never carry. "Unsubscribe"
+# is deliberately *not* here: plenty of ATS mail carries it, and gating on it
+# would throw away real rejections and real invitations.
+BULK_DIGEST = re.compile(
+    # A bulletin about third parties. The possessive is what makes it safe:
+    # it is someone else's post, not the reader's application.
+    r"\b(commented|replied|reacted|liked|shared) on\b|"
+    r"\brecently posted\b|\bshared a post\b|"
+    r"\bviewed your profile\b|\bappeared in \d+ search(es)?\b|"
+    r"\b(people|connections) (you may know|in your network)\b|"
+    # A list of openings, which is an advert however it is worded.
+    r"\b\d+ (new |more )?(jobs?|openings?|opportunities|roles?) "
+    r"(match|matching|for|in|near|that match)\b|"
+    r"\bjobs? \d+\s*[-\u2013]\s*\d+ of \d+\b|"
+    r"\byour job alert\b|\bjob alert for\b|"
+    r"\b(easily|easy|quick) apply\b|"
+    r"\bnew jobs? for your search\b|"
+    r"\bbased on your (profile|searches|preferences)\b",
+    re.I,
+)
+
+
 BENEFITS_PROGRAMME = re.compile(
     r"\b(employment insurance|\bEI\b (application|claim|benefits?)|"
     r"applied for EI|unemployment (insurance|benefits?)|jobseeker'?s allowance|"
@@ -895,6 +927,17 @@ def classify(cand):
         return {
             "status": UNCLEAR, "confidence": "high",
             "note": "job board advertising openings, not a reply to an application",
+            "explicit_round": None, "reject_score": rej, "next_score": nxt,
+            "reject_hits": rej_hits, "next_hits": nxt_hits,
+        }
+
+    # Like the job-board gate and for the same reason, this does not yield to a
+    # score: the score is read out of the very text this gate says is not
+    # addressed to the reader, so letting it win would make the gate decorative.
+    if BULK_DIGEST.search(text):
+        return {
+            "status": UNCLEAR, "confidence": "high",
+            "note": "a bulletin or a list of openings, not a reply to an application",
             "explicit_round": None, "reject_score": rej, "next_score": nxt,
             "reject_hits": rej_hits, "next_hits": nxt_hits,
         }

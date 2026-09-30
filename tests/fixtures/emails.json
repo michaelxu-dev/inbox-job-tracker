@@ -350,5 +350,38 @@
     "expect": "Unclear",
     "why": "a feed digest; recruiters posting that they are hiring is not an employer replying to you",
     "body": "Joanna Ram\nSenior Talent Acquisition Business Partner at iRhythm\nFollow\n\nWe're Hiring: Senior Director, IT Digital Transformation At iRhythm, we're seeking a Senior Director, IT... see more\n\nBrian Brady\nCGO, President, SVP, Top 40 Under 40 winner\nFollow\n\nHello network... urgent request for 5 bilingual software testers.\n\nBilingual Software Tester (French First) - Remote Position | Oomple"
+  },
+  {
+    "id": "d33",
+    "folder": "inbox",
+    "from_name": "LinkedIn",
+    "from_address": "notifications-noreply@linkedin.com",
+    "received": "2026-08-28T19:08:00Z",
+    "subject": "Saritha Ramesh at Amazon commented on Trevor Ramos' post: Super happy for you :) Congratulations!!",
+    "expect": "Unclear",
+    "why": "found on a real mailbox filed as Invite to first interview; the sentence it rested on was a stranger's joke about sales patter - 'Rest in peace, \"Book a call\" or \"Demo\"' - which scores 10 for the book-a-call cue. The gate used to yield at 8",
+    "body": "Saritha Ramesh commented on Trevor Ramos' post: Super happy for you :) Congratulations!!\nSee post\nRumman Sadiq commented on Dylan B Chase's post: Congrats Dylan, that's huge growth in a short time...\nStephanie G. posted: It's the end of a great week here at CLEAResult Canada. This week, we welcomed new...\nRumman Sadiq posted: Don't call us mad for flipping the entire process. Rest in peace, \"Book a call\" or \"Demo\"\nMINJUN YE and 2 other people viewed your profile\nThis email was intended for Chengwen Deng (Software Engineer)\nYou are receiving LinkedIn notification emails.\nUnsubscribe"
+  },
+  {
+    "id": "d34",
+    "folder": "inbox",
+    "from_name": "Indeed Job Alerts",
+    "from_address": "donotreply@jobalert.indeed.com",
+    "received": "2026-07-11T08:00:00Z",
+    "subject": "Web Developer at ShearComfort Ltd. and 2 more new jobs",
+    "expect": "Unclear",
+    "why": "an advert, filed as Invite to first interview on a real mailbox. Also pins the subdomain: Indeed sends alerts from jobalert.indeed.com, and an exact-match gate misses every one",
+    "body": "Indeed Job Alert\n3 new react opportunities in Vancouver, BC\n\nJobs 1-3 of 3 new jobs\nSee matching results on Indeed\n\nWeb Developer\nShearComfort Ltd. - Vancouver, BC\n$55,000-$75,000 a year\nEasily apply\nExperience with A/B testing, conversion rate optimization (CRO), and data-driven decision making is highly preferred.\n1 day ago"
+  },
+  {
+    "id": "d35",
+    "folder": "inbox",
+    "from_name": "Careers Digest",
+    "from_address": "alerts@somewhere.example",
+    "received": "2026-07-12T08:00:00Z",
+    "subject": "10 new jobs matching your search",
+    "expect": "Unclear",
+    "why": "the same advert relayed from a domain no job-board list will ever hold; caught by its shape rather than its sender",
+    "body": "10 new jobs match your search in Vancouver, BC.\nEasily apply to roles based on your profile.\nBook a call with a career coach today."
   }
 ]
