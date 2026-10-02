@@ -611,7 +611,10 @@ def test_a_lopsided_mix_is_not_a_close_call():
         "application for the Senior Backend Engineer role. Unfortunately we have "
         "decided to move forward with other candidates. If you would like, please "
         "let us know your availability and we can share feedback about next steps.")
-    assert (verdict["reject_score"], verdict["next_score"]) == (35, 14)
+    # 43 rather than 35 since "move forward with other candidates" became a
+    # rule of its own: the same sentence, counted once more. The point of this
+    # test is the gap between the two scores, not either number.
+    assert (verdict["reject_score"], verdict["next_score"]) == (43, 14)
     assert verdict["status"] == "Reject"
     assert verdict["confidence"] == "high"
 
@@ -757,3 +760,40 @@ def test_an_employer_taking_the_next_step_still_counts():
         "body": "We would like to take the next step with you.",
     })
     assert verdict["next_score"] > 0
+
+
+def test_moving_forward_with_other_people_is_a_decline():
+    """Caught on a real mailbox, shown briefly and then gone: a plain rejection
+    the rules scored at nothing.
+
+    It never says no. It thanks you for the call, says the team is proceeding
+    with candidates whose experience aligns better, and wishes you well. The
+    advancement phrase inside it was correctly taken back by the generic-subject
+    cue - the sentence is about other people - and then nothing said that this
+    is precisely what a decline looks like.
+    """
+    verdict = rules.classify({
+        "subject": "Update on Your Application (Senior Software Engineer, Security)",
+        "from_name": "Noora Ali",
+        "from_address": "noora@super.example",
+        "body": "Thank you again for taking the time to speak with me about the "
+                "Senior Software Engineer, Security role.\n\n"
+                "After careful consideration, the team has decided to move forward "
+                "with candidates whose experience more closely aligns with our "
+                "current business needs for this position.\n\n"
+                "We wish you all the best in your continued search and future "
+                "endeavors.",
+    })
+    assert verdict["status"] == rules.REJECT
+    assert verdict["confidence"] == "high"
+
+
+def test_moving_forward_with_you_is_still_an_advancement():
+    """The object decides it. The rule must not reach the sentence it is the
+    mirror image of."""
+    for body in ["We have decided to move forward with you to the next round.",
+                 "We have decided to move forward with your application."]:
+        verdict = rules.classify({
+            "subject": "Your application", "from_name": "Contoso",
+            "from_address": "no-reply@contoso.example", "body": body})
+        assert verdict["reject_score"] == 0, body

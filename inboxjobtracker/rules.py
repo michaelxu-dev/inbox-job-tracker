@@ -73,8 +73,26 @@ REJECT_RULES = [
         r"(now )?(been )?(closed|cancel+ed|withdrawn|filled)\b"),
     (6, r"keep your (resume|application|details) on file"),
     (5, r"\bunfortunately\b"),
-    (4, r"other candidates whose (qualifications|experience)"),
-    (4, r"wish you (the best|success|luck)"),
+    # Moving forward *with other people*. The polite rejection names the
+    # candidates it is proceeding with instead of you, and says nothing about
+    # you at all: "the team has decided to move forward with candidates whose
+    # experience more closely aligns with our current business needs". Scored
+    # nothing - no "unfortunately", no "not selected", and the advancement
+    # phrase inside it correctly taken back by the generic-subject cue, which
+    # recognised that the sentence is about somebody else and then let the
+    # matter drop.
+    #
+    # The object is what decides it. "Move forward with you", "with your
+    # application" is an advancement and must stay one; a plural third party is
+    # a decline.
+    (8, r"(mov(e|ing)|proceed(ing)?) forward with "
+        r"(other |another |different |the other )?(candidates?|applicants?)\b"),
+    (4, r"(other |)candidates whose (qualifications|experience|background|skills)"),
+    # "all the best" is the commonest form of it and the one that was missed.
+    (4, r"wish you (all )?(the best|success|luck|well)"),
+    # A sign-off that exists for one purpose. Nobody wishes you well in your
+    # future endeavours while inviting you to a second interview.
+    (4, r"\bfuture endeavou?rs\b"),
 ]
 
 NEXT_RULES = [

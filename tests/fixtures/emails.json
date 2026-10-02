@@ -394,5 +394,16 @@
     "expect": "Unclear",
     "why": "a settlement agency's newsletter, filed as Invite to first interview on a real mailbox. The heading '## Take your next step!' scored as an advancement; the quoted testimonial supplied the evidence sentence, 'One interview at a time'. Second time this sender has been misfiled on the same rule",
     "body": "Plus AskEd answers your career questions.\n\nImmigrant Services Society of BC (ISSofBC) welcomes and supports newcomers to settle in their communities, learn English, study, and find work in British Columbia (BC).\n\n\"One resume at a time. One interview at a time. Treat every interview as practice. Don't stop. Eventually, you'll find your dream job.\" - Sahil Chopra, B-Hired client\n\n## Take your next step!\n\n* Learn how to fund your future.\n* Check the new tool LearnEnglish.\n* Learn about B-Hired and register.\n* See what clients like you ask Ed this month.\n* Register for upcoming free career events and job fairs."
+  },
+  {
+    "id": "d37",
+    "folder": "inbox",
+    "from_name": "Noora Ali",
+    "from_address": "noora@super.example",
+    "received": "2026-09-24T14:00:00Z",
+    "subject": "Update on Your Application (Senior Software Engineer, Security)",
+    "expect": "Reject",
+    "why": "a rejection that never says no: it thanks you for the call, proceeds with candidates whose experience aligns better, and wishes you well. Scored zero both ways - the advancement phrase was correctly discounted as being about other people, and nothing said that is what a decline reads like. Shown on a phone for a moment and then gone",
+    "body": "Hi Michael,\n\nThank you again for taking the time to speak with me about the Senior Software Engineer, Security role. It was great getting to learn more about your background and experience.\n\nAfter careful consideration, the team has decided to move forward with candidates whose experience more closely aligns with our current business needs for this position.\n\nWe truly appreciate your interest and the time you invested in the process. We wish you all the best in your continued search and future endeavors.\n\nBest regards,\nNoora"
   }
 ]
