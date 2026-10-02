@@ -383,5 +383,16 @@
     "expect": "Unclear",
     "why": "the same advert relayed from a domain no job-board list will ever hold; caught by its shape rather than its sender",
     "body": "10 new jobs match your search in Vancouver, BC.\nEasily apply to roles based on your profile.\nBook a call with a career coach today."
+  },
+  {
+    "id": "d36",
+    "folder": "inbox",
+    "from_name": "ISSofBC",
+    "from_address": "communications@issbc.org",
+    "received": "2026-07-14T09:00:00Z",
+    "subject": "Lost your job? Here's how one newcomer rebuilt her career in Canada",
+    "expect": "Unclear",
+    "why": "a settlement agency's newsletter, filed as Invite to first interview on a real mailbox. The heading '## Take your next step!' scored as an advancement; the quoted testimonial supplied the evidence sentence, 'One interview at a time'. Second time this sender has been misfiled on the same rule",
+    "body": "Plus AskEd answers your career questions.\n\nImmigrant Services Society of BC (ISSofBC) welcomes and supports newcomers to settle in their communities, learn English, study, and find work in British Columbia (BC).\n\n\"One resume at a time. One interview at a time. Treat every interview as practice. Don't stop. Eventually, you'll find your dream job.\" - Sahil Chopra, B-Hired client\n\n## Take your next step!\n\n* Learn how to fund your future.\n* Check the new tool LearnEnglish.\n* Learn about B-Hired and register.\n* See what clients like you ask Ed this month.\n* Register for upcoming free career events and job fairs."
   }
 ]

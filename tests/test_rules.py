@@ -721,3 +721,39 @@ def test_an_employers_own_reply_is_not_a_bulletin():
             "body": body,
         })
         assert "bulletin" not in verdict["note"], body
+
+
+def test_a_newsletter_telling_you_to_act_is_not_an_employer_acting():
+    """The same settlement agency, published as a first interview twice.
+
+    First time the phrase was "take the next step in your career journey", and
+    the lookahead on the NEXT rule was narrowed to exclude it. This time it was
+    a bare heading, "## Take your next step!", which that lookahead cannot see:
+    the giveaway is in front of the match, not behind it.
+    """
+    verdict = rules.classify({
+        "subject": "Lost your job? Here's how one newcomer rebuilt her career in Canada",
+        "from_name": "ISSofBC",
+        "from_address": "communications@issbc.org",
+        "body": "Immigrant Services Society of BC welcomes and supports newcomers "
+                "to settle in their communities, learn English, study, and find "
+                "work in British Columbia.\n\n"
+                '"One resume at a time. One interview at a time. Treat every '
+                'interview as practice." - Sahil Chopra, B-Hired client\n\n'
+                "## Take your next step!\n"
+                "* Register for upcoming free career events and job fairs.",
+    })
+    assert verdict["status"] == rules.UNCLEAR
+    assert verdict["next_score"] == 0
+
+
+def test_an_employer_taking_the_next_step_still_counts():
+    """The cue needs the possessive. "We would like to take the next step with
+    you" is a real advancement and the exclusion must not reach it."""
+    verdict = rules.classify({
+        "subject": "Your application",
+        "from_name": "Contoso",
+        "from_address": "no-reply@contoso.example",
+        "body": "We would like to take the next step with you.",
+    })
+    assert verdict["next_score"] > 0

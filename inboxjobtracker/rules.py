@@ -299,8 +299,26 @@ SENDER_DASH = re.compile(r"^(?P<left>.+?)\s+[-–—]\s+(?P<right>.+?)\s*$")
 POSSESSIVE = re.compile(r"[''\u2019]s\b\s*$", re.I)
 
 
+# An instruction to the reader to go and do something is career advice, not an
+# employer reporting a decision. "Take your next step!" is a newsletter heading;
+# an employer writes "the next steps are", "next steps in the process", "we'll
+# be in touch about next steps" - never telling you to take *your* next step.
+#
+# The same settlement agency's bulletin has now been published as a first
+# interview twice. The first time the phrase was "take the next step in your
+# career journey", and the lookahead on the NEXT rule was narrowed to exclude
+# it; this time it was a bare "## Take your next step!", which that lookahead
+# does not see because the giveaway is in front of the match rather than behind
+# it. A run-up cue is the right place for it.
+#
+# Deliberately requires the possessive. "We would like to take the next step
+# with you" is a real advancement and must stay one.
+SELF_DIRECTED_CUE = re.compile(r"\b(take|plan|make|start|begin) your\s+$", re.I)
+
+
 ADVANCEMENT_CUES = (NEGATION_CUE, CONDITIONAL_CUE, GENERIC_SUBJECT_CUE,
-                    PRECONDITION_CUE, VALEDICTION_CUE, POSSIBILITY_CUE)
+                    PRECONDITION_CUE, VALEDICTION_CUE, POSSIBILITY_CUE,
+                    SELF_DIRECTED_CUE)
 # A rejection is a negation and ends in a farewell, so those two cues cannot be
 # applied to it - they are what it is made of. What still holds is that a
 # hypothetical rejection rejects nobody: "If you see the job moved to an
