@@ -11,6 +11,7 @@
 
   "review_batch_size": 40,
   "interview_round_gap_days": 10,
+  "repeat_window_days": 30,
 
   "default_account": "gmail",
   "accounts": {

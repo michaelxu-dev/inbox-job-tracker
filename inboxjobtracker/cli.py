@@ -11,6 +11,14 @@ FILES = ("candidates.json", "store.json", "review_queue.json",
          "decisions.json", "applications.csv", "applications.html")
 
 
+def _window(cfg):
+    """How many days apart two receipts for one role are two applications.
+
+    `.get`, because a config assembled in a test or by an older install has no
+    such key and the report has a sensible answer of its own."""
+    return int(cfg.get("repeat_window_days", report.DEFAULT_REPEAT_WINDOW_DAYS))
+
+
 def _paths(cfg):
     return {name: config.data_path(cfg, name) for name in FILES}
 
@@ -160,10 +168,11 @@ def cmd_classify(cfg, args):
     with open(paths["review_queue.json"], "w", encoding="utf-8") as fh:
         json.dump({"items": queue}, fh, indent=2, ensure_ascii=False)
 
-    written = report.write_csv(store, paths["applications.csv"], report.cutoff(cfg))
+    window = _window(cfg)
+    written = report.write_csv(store, paths["applications.csv"], report.cutoff(cfg), window)
     # Written together so the page can never quietly disagree with the CSV.
     html_mod.write_html(store, paths["applications.html"], report.cutoff(cfg),
-                        cfg.get("account"))
+                        cfg.get("account"), window)
     print("Classified %d: %s" % (len(candidates),
           ", ".join("%s=%d" % kv for kv in sorted(counts.items()))), file=sys.stderr)
     print("CSV rows: %d | queued for review: %d" % (written, len(queue)), file=sys.stderr)
@@ -177,7 +186,7 @@ def cmd_html(cfg, args):
     if not store:
         sys.exit("Nothing in the store yet - run:  inbox-job-tracker run")
     count = html_mod.write_html(store, paths["applications.html"],
-                                report.cutoff(cfg), cfg.get("account"))
+                                report.cutoff(cfg), cfg.get("account"), _window(cfg))
     print("Wrote %s (%d applications)" % (paths["applications.html"], count),
           file=sys.stderr)
     return 0
@@ -229,9 +238,10 @@ def cmd_merge(cfg, args):
         applied += 1
     report.assign_interview_rounds(store, int(cfg["interview_round_gap_days"]))
     store_mod.save(paths["store.json"], store)
-    written = report.write_csv(store, paths["applications.csv"], report.cutoff(cfg))
+    written = report.write_csv(store, paths["applications.csv"], report.cutoff(cfg),
+                               _window(cfg))
     html_mod.write_html(store, paths["applications.html"], report.cutoff(cfg),
-                        cfg.get("account"))
+                        cfg.get("account"), _window(cfg))
     print("Merged %d decisions. CSV rows: %d" % (applied, written), file=sys.stderr)
     return 0
 

@@ -17,7 +17,7 @@ import json
 import os
 
 from .rules import STAGE_ORDER, name_key, position_key
-from .report import select_rows
+from .report import DEFAULT_REPEAT_WINDOW_DAYS, select_rows
 
 
 # Waiting is not a status any mail carries: it is what an application looks like
@@ -36,15 +36,18 @@ STATUS_CLASS = {
 
 
 def group_applications(rows):
-    """One entry per employer + role, with its stages oldest first.
+    """One entry per employer + role + attempt, with its stages oldest first.
 
     `select_rows` already collapsed repeats and ordered the rows; this only
     gathers the stages of one application back together, which is what the CSV
     cannot express and the reason this page exists.
     """
     apps = {}
-    for _, company, position, row in rows:
-        key = (name_key(company), position_key(position))
+    for _, company, position, row, _attempt in rows:
+        # The attempt is part of the key: applying to one role twice is two
+        # applications, and merging them produced a timeline that read
+        # Acknowledge -> Invite to test -> Acknowledge.
+        key = (name_key(company), position_key(position), _attempt)
         app = apps.setdefault(key, {
             "company": company, "position": position, "stages": [],
         })
@@ -385,8 +388,9 @@ open the original message in your mail client.</p>
     }
 
 
-def write_html(store, path, cutoff=None, account=None):
-    rows = select_rows(store, cutoff)
+def write_html(store, path, cutoff=None, account=None,
+               repeat_window_days=DEFAULT_REPEAT_WINDOW_DAYS):
+    rows = select_rows(store, cutoff, repeat_window_days)
     apps = group_applications(rows)
     with io.open(path, "w", encoding="utf-8", newline="\n") as fh:
         fh.write(render(apps, account, len(rows)))

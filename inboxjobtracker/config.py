@@ -34,6 +34,10 @@ DEFAULTS = {
     # is ever checked - which is the half where the costly mistakes live.
     "audit_share": 0.25,
     "interview_round_gap_days": 10,
+    # How many days apart two receipts for one role must be before they count
+    # as two applications rather than one receipt mailed twice. See
+    # report.attempts.
+    "repeat_window_days": 30,
     "max_body_chars": 4000,
     "judge": "off",
     "judge_model": "claude-haiku-4-5-20251001",

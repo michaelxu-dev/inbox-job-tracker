@@ -12,13 +12,13 @@ import re
 from inboxjobtracker import html as html_mod
 
 
-def stage(company, position, status, date, **kw):
+def stage(company, position, status, date, attempt=1, **kw):
     row = {"company": company, "position": position, "status": status,
            "date": date, "received": date + "T09:00:00Z",
            "subject": kw.get("subject", "s"), "from_address": kw.get("sender", "a@b.com"),
            "evidence": kw.get("evidence", ""), "web_link": kw.get("link", ""),
            "decided_by": kw.get("by", "rules")}
-    return (row["received"], company, position, row)
+    return (row["received"], company, position, row, attempt)
 
 
 def test_one_entry_per_application_not_per_stage():

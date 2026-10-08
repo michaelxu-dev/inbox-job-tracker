@@ -179,14 +179,65 @@ def canonical_positions(store, canon, by_domain):
             for key, seen in counts.items()}
 
 
+DEFAULT_REPEAT_WINDOW_DAYS = 30
+
+
+def attempts(mails, window_days):
+    """Which attempt at one role each of its mails belongs to.
+
+    Takes the mails of a single employer + role in the order they arrived and
+    returns a 1-based attempt number for each. A mail starts a new attempt when
+    all three hold:
+
+    - it is an acknowledgement. An application begins with a receipt and
+      nothing else does; without this clause a rejection arriving two months
+      after the receipt — ordinary employer behaviour — became an attempt of
+      its own containing nothing but a rejection.
+    - more than `window_days` have passed since the previous mail about this
+      role, chained mail to mail rather than measured from the start, so an
+      application whose stages are each three weeks apart stays one application
+      however long it runs.
+    - the attempt it would leave already has an acknowledgement. One receipt
+      resent is still one application, and the stage-level collapse in
+      `select_rows` is what handles that.
+    """
+    out = []
+    attempt = 1
+    previous = None
+    has_receipt = False
+    for received, status in mails:
+        when = _parse(received)
+        if (status == "Acknowledge" and has_receipt
+                and previous is not None and when is not None
+                and (when - previous).total_seconds() > window_days * 86400):
+            attempt += 1
+            has_receipt = False
+        if status == "Acknowledge":
+            has_receipt = True
+        # An unparseable date cannot start an attempt, but it is still part of
+        # the one it landed in.
+        if when is not None:
+            previous = when
+        out.append(attempt)
+    return out
+
+
+def _parse(received):
+    try:
+        return dt.datetime.fromisoformat((received or "").replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
 def warn_out_of_sequence(chosen):
     """An application runs acknowledge -> test/interview -> reject. A history
     that runs backwards means a mail is in the wrong stage, or two applications
     to one role got merged. It cannot be fixed by reordering, so it is reported.
     """
     by_role = {}
-    for _, name, position, row in chosen:
-        by_role.setdefault((name_key(name), position_key(position)), []).append((name, position, row))
+    for _, name, position, row, attempt in chosen:
+        by_role.setdefault((name_key(name), position_key(position), attempt),
+                           []).append((name, position, row))
     for group in by_role.values():
         group.sort(key=lambda e: (e[2]["date"], STAGE_ORDER.get(e[2]["status"], 9)))
         ranks = [STAGE_ORDER.get(row["status"], 9) for _, _, row in group]
@@ -198,25 +249,23 @@ def warn_out_of_sequence(chosen):
                 file=sys.stderr)
 
 
-def select_rows(store, cutoff=None):
+def select_rows(store, cutoff=None, repeat_window_days=DEFAULT_REPEAT_WINDOW_DAYS):
     """Choose which stored mails become CSV rows, and under which name and role.
 
     `cutoff` is the oldest ReceiveDate to publish. The store is durable and keeps
     everything, but mail that has aged out of the fetch window is never
     re-examined, so its verdict would otherwise sit in the CSV forever; widening
-    lookback_days brings those rows straight back."""
+    lookback_days brings those rows straight back.
+
+    `repeat_window_days` separates one event mailed twice from a second
+    application to the same role. See `attempts`."""
     canon = canonical_names(store)
     by_domain = canonical_by_domain(store)
     fallback = backfill_positions(store, lambda row: resolve_company(row, canon, by_domain))
     canon_position = canonical_positions(store, canon, by_domain)
 
-    # One row per employer + role + date, so an application keeps its history:
-    # a first interview in August and a Reject in September are both kept, while
-    # the several mails of one interview loop on one day collapse. An Acknowledge
-    # and a real decision can also share a day, and the key holds no status, so
-    # the decision is preferred over the receipt; otherwise the latest mail wins.
-    best = {}
-    for row in store.values():
+    by_role = {}
+    for row in sorted(store.values(), key=lambda r: (r["received"], r.get("id") or "")):
         if row["status"] not in CSV_STATUSES:
             continue
         if cutoff and row["date"] < cutoff:
@@ -226,32 +275,49 @@ def select_rows(store, cutoff=None):
         # still backfill a title once one turns up in other mail.
         position = row.get("position") or fallback.get(name_key(name)) or "Unknown"
         position = canon_position.get((name_key(name), position_key(position)), position)
-        # One row per employer + role + status. An application reaches each
-        # stage once: a single receipt, one assessment invite, one first-round
-        # invite, one rejection. Repeats are the same event mailed twice — a
-        # resent rejection, an assessment announced then issued — so the
-        # earliest is kept, being when that stage was actually reached.
-        key = (name_key(name), position_key(position), row["status"])
-        if key not in best or row["received"] < best[key][0]:
-            best[key] = (row["received"], name, position, row)
+        # Sorted by arrival above, so each list is already in the order
+        # `attempts` needs to read it.
+        by_role.setdefault((name_key(name), position_key(position)), []).append(
+            (row["received"], name, position, row))
 
-    # Grouped by employer, then role, then oldest date first, so one
-    # application's progression reads down the page in the order it happened.
-    # Date first, then stage, so an acknowledgement and an invite that arrive on
-    # the same day still read in the order they happened.
+    # One row per employer + role + stage, within one attempt at that role. An
+    # application reaches each stage once: a single receipt, one assessment
+    # invite, one first-round invite, one rejection. Repeats are the same event
+    # mailed twice — a resent rejection, an assessment announced then issued —
+    # so the earliest is kept, being when that stage was actually reached.
+    #
+    # The key used to be employer + role + stage and nothing else, which has no
+    # sense of time: an acknowledgement from one employer in August and a
+    # second one forty days later were "the same receipt mailed twice", so the
+    # October mail was dropped and the only sign of it was the list still
+    # showing August. One real mailbox of 335 rows had swallowed three
+    # applications that way.
+    best = {}
+    for role, entries in by_role.items():
+        numbers = attempts([(e[0], e[3]["status"]) for e in entries], repeat_window_days)
+        for (received, name, position, row), attempt in zip(entries, numbers):
+            key = (role[0], role[1], attempt, row["status"])
+            if key not in best or received < best[key][0]:
+                best[key] = (received, name, position, row, attempt)
+
+    # Grouped by employer, then role, then attempt, then oldest date first, so
+    # one application's progression reads down the page in the order it
+    # happened. Date before stage, so an acknowledgement and an invite that
+    # arrive on the same day still read in the order they happened.
     chosen = sorted(best.values(),
-                    key=lambda e: (e[1].casefold(), e[2].casefold(), e[3]["date"],
+                    key=lambda e: (e[1].casefold(), e[2].casefold(), e[4], e[3]["date"],
                                    STAGE_ORDER.get(e[3]["status"], 9)))
     return chosen
 
 
-def write_csv(store, csv_path, cutoff=None):
-    chosen = select_rows(store, cutoff)
+def write_csv(store, csv_path, cutoff=None,
+              repeat_window_days=DEFAULT_REPEAT_WINDOW_DAYS):
+    chosen = select_rows(store, cutoff, repeat_window_days)
     with open(csv_path, "w", encoding="utf-8-sig", newline="") as fh:
         writer = csv.writer(fh)
         writer.writerow(["CompanyName", "Position", "ReceiveDate", "Status",
                          "Sender EmailAddress", "Subject", "Notes", "Web Link"])
-        for _, name, position, row in chosen:
+        for _, name, position, row, _attempt in chosen:
             writer.writerow([name, position, row["date"], row["status"],
                              row.get("from_address") or "",
                              row.get("subject") or "",
@@ -260,7 +326,8 @@ def write_csv(store, csv_path, cutoff=None):
     # The dedup key makes this true by construction; verified anyway so a future
     # change to the key cannot quietly reintroduce duplicate stages.
     warn_out_of_sequence(chosen)
-    stages = [(name_key(n), position_key(pos), row["status"]) for _, n, pos, row in chosen]
+    stages = [(name_key(n), position_key(pos), attempt, row["status"])
+              for _, n, pos, row, attempt in chosen]
     if len(set(stages)) != len(stages):
         dupes = {k for k in stages if stages.count(k) > 1}
         raise AssertionError(

@@ -43,8 +43,10 @@ def test_one_row_per_stage():
     store = {e["id"]: classify(e) for e in EMAILS}
     report.assign_interview_rounds(store, gap_days=10)
     rows = report.select_rows(store, cutoff=None)
-    stages = [(rules.name_key(name), rules.position_key(pos), row["status"])
-              for _, name, pos, row in rows]
+    # Per attempt at the role: applying to one role twice reaches Acknowledge
+    # twice, which is two applications and not a repeat.
+    stages = [(rules.name_key(name), rules.position_key(pos), a, row["status"])
+              for _, name, pos, row, a in rows]
     assert len(set(stages)) == len(stages)
 
 
@@ -54,8 +56,8 @@ def test_stages_never_run_backwards():
     report.assign_interview_rounds(store, gap_days=10)
     rows = report.select_rows(store, cutoff=None)
     by_role = {}
-    for _, name, position, row in rows:
-        key = (rules.name_key(name), rules.position_key(position))
+    for _, name, position, row, a in rows:
+        key = (rules.name_key(name), rules.position_key(position), a)
         by_role.setdefault(key, []).append(row)
     for group in by_role.values():
         group.sort(key=lambda r: r["date"])
@@ -234,13 +236,13 @@ def test_title_variants_collapse_to_one_history():
             "from_address": "kwilson-ext@gitlab.com", "subject": "GitLab",
         }
     rows = report.select_rows(store, cutoff=None)
-    assert [(r["date"], r["status"]) for _, _, _, r in rows] == [
+    assert [(r["date"], r["status"]) for _, _, _, r, _a in rows] == [
         ("2026-08-29", "Acknowledge"),
         ("2026-08-30", "Invite to first interview"),
         ("2026-09-09", "Reject"),
     ]
     # and all three read under one title, the plainest one seen
-    assert {position for _, _, position, _ in rows} == {"Senior Backend Engineer"}
+    assert {position for _, _, position, _, _a in rows} == {"Senior Backend Engineer"}
 
 
 def test_untitled_booking_joins_the_role_named_under_another_spelling():
@@ -259,7 +261,7 @@ def test_untitled_booking_joins_the_role_named_under_another_spelling():
                  "from_address": "jane.doe@fabrikam.ai"},
     }
     rows = report.select_rows(store, cutoff=None)
-    assert {(name, position) for _, name, position, _ in rows} == {
+    assert {(name, position) for _, name, position, _, _a in rows} == {
         ("Fabrikam AI", "Staff Fullstack Engineer")}
 
 
@@ -312,7 +314,7 @@ def test_employer_domain_and_ats_tenant_are_one_employer():
         "rej": row(rules.REJECT, "2026-08-28", "Thales", "agent", "thales@myworkday.com"),
     }
     rows = report.select_rows(store, cutoff=None)
-    assert {name for _, name, _, _ in rows} == {"Thales"}
+    assert {name for _, name, _, _, _a in rows} == {"Thales"}
 
 
 @pytest.mark.parametrize("a,b,same", [
@@ -586,7 +588,7 @@ def test_one_application_keeps_one_spelling():
               "received": "2026-09-01T09:00:00Z", "subject": "An update",
               "from_address": "no-reply@contoso.example"},
     }
-    names = {name for _, name, _, _ in report.select_rows(store, cutoff=None)}
+    names = {name for _, name, _, _, _a in report.select_rows(store, cutoff=None)}
     assert len(names) == 1
 
 
@@ -797,3 +799,67 @@ def test_moving_forward_with_you_is_still_an_advancement():
             "subject": "Your application", "from_name": "Contoso",
             "from_address": "no-reply@contoso.example", "body": body})
         assert verdict["reject_score"] == 0, body
+
+
+# --- Applying to the same role twice -----------------------------------------
+#
+# Reported from a phone: a receipt from Brex arrived on 2026-10-08 and the list
+# went on showing the one from 2026-08-29. The dedup key was employer + role +
+# stage and knew nothing about time, so the second receipt was "the same mail
+# twice" and was dropped. Three applications in one real mailbox of 335 rows
+# had gone that way; the genuine repeats in it were 0 days apart and the
+# re-applications 21, 23 and 40.
+
+def _mail(status, date, **kw):
+    return {"received": date + "T09:00:00Z", "status": status}
+
+
+def test_two_receipts_far_apart_are_two_attempts():
+    mails = [_mail("Acknowledge", "2026-08-29"), _mail("Acknowledge", "2026-10-08")]
+    got = report.attempts([(m["received"], m["status"]) for m in mails], 30)
+    assert got == [1, 2]
+
+
+def test_two_receipts_inside_the_window_are_one_attempt():
+    """One receipt mailed twice. The stage-level collapse handles the rest."""
+    mails = [_mail("Acknowledge", "2026-08-29"), _mail("Acknowledge", "2026-09-20")]
+    got = report.attempts([(m["received"], m["status"]) for m in mails], 30)
+    assert got == [1, 1]
+
+
+def test_a_late_rejection_belongs_to_the_application_it_rejects():
+    """The clause that cost the most to get right. Employers go quiet for
+    months and then decline; without "only a receipt starts an attempt" that
+    rejection became an application of its own containing nothing else."""
+    mails = [_mail("Acknowledge", "2026-01-11"), _mail("Reject", "2026-06-30")]
+    got = report.attempts([(m["received"], m["status"]) for m in mails], 30)
+    assert got == [1, 1]
+
+
+def test_a_long_application_measured_mail_to_mail_stays_one():
+    """Chained, not measured from the start: every stage three weeks after the
+    last, running five months, is one application."""
+    mails = [_mail("Acknowledge", "2026-01-01"), _mail("Invite to test", "2026-01-22"),
+             _mail("Invite to first interview", "2026-02-12"),
+             _mail("Reject", "2026-03-05")]
+    got = report.attempts([(m["received"], m["status"]) for m in mails], 30)
+    assert got == [1, 1, 1, 1]
+
+
+def test_a_second_attempt_is_a_second_application_in_the_report():
+    """End to end, through select_rows: two entries, each with one receipt."""
+    store = {
+        "a": {"id": "a", "received": "2026-08-29T09:00:00Z", "date": "2026-08-29",
+              "status": "Acknowledge", "company": "Brex", "position": None,
+              "from_address": "no-reply@brex.com", "subject": "Thank you for applying",
+              "company_source": "ai", "position_source": "rule"},
+        "b": {"id": "b", "received": "2026-10-08T21:05:00Z", "date": "2026-10-08",
+              "status": "Acknowledge", "company": "Brex", "position": None,
+              "from_address": "no-reply@brex.com", "subject": "Thank you for applying",
+              "company_source": "ai", "position_source": "rule"},
+    }
+    rows = report.select_rows(store, cutoff=None, repeat_window_days=30)
+    assert [(r[3]["date"], r[4]) for r in rows] == [("2026-08-29", 1), ("2026-10-08", 2)]
+    # And with the rule turned off, the old behaviour exactly.
+    rows = report.select_rows(store, cutoff=None, repeat_window_days=3650)
+    assert [(r[3]["date"], r[4]) for r in rows] == [("2026-08-29", 1)]
