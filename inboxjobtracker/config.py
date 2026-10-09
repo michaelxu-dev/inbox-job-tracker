@@ -37,7 +37,7 @@ DEFAULTS = {
     # How many days apart two receipts for one role must be before they count
     # as two applications rather than one receipt mailed twice. See
     # report.attempts.
-    "repeat_window_days": 30,
+    "repeat_window_days": 20,
     "max_body_chars": 4000,
     "judge": "off",
     "judge_model": "claude-haiku-4-5-20251001",

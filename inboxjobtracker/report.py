@@ -179,7 +179,7 @@ def canonical_positions(store, canon, by_domain):
             for key, seen in counts.items()}
 
 
-DEFAULT_REPEAT_WINDOW_DAYS = 30
+DEFAULT_REPEAT_WINDOW_DAYS = 20
 
 
 def attempts(mails, window_days):

@@ -822,8 +822,8 @@ def test_two_receipts_far_apart_are_two_attempts():
 
 def test_two_receipts_inside_the_window_are_one_attempt():
     """One receipt mailed twice. The stage-level collapse handles the rest."""
-    mails = [_mail("Acknowledge", "2026-08-29"), _mail("Acknowledge", "2026-09-20")]
-    got = report.attempts([(m["received"], m["status"]) for m in mails], 30)
+    mails = [_mail("Acknowledge", "2026-08-29"), _mail("Acknowledge", "2026-09-10")]
+    got = report.attempts([(m["received"], m["status"]) for m in mails], 20)
     assert got == [1, 1]
 
 
