@@ -98,7 +98,13 @@ REJECT_RULES = [
 NEXT_RULES = [
     (10, r"(would|we.?d) like to invite you"),
     (10, r"invite you to (an?|the) (interview|assessment|next)"),
-    (10, r"(schedule|set ?up|arrange|book) (a|an|your) (call|chat|interview|screen|meeting|time)"),
+    # The article is optional and a few words may sit between it and the noun.
+    # "would like to set up a 15-30 minute virtual chat over MS Teams" is an
+    # interview invitation that this missed for wanting the noun immediately
+    # after the article, and so is "Book time with Flora". Reported by a tester
+    # whose invitation sat in the review queue while the list showed nothing.
+    (10, r"(schedule|set ?up|arrange|book) (?:(?:a|an|your) )?(?:[\w()/-]+ ){0,4}"
+         r"(call|chat|interview|screen|meeting|time)\b"),
     (10, r"move (you )?forward (with|in) (your |the )?(application|process|candidacy)"),
     (9, r"(phone|video|initial|technical|final) (screen|screening|interview)"),
     (9, r"next (round|stage)"),
@@ -135,7 +141,13 @@ TEST_RULES = [
 INTERVIEW_RULES = [
     (10, r"(would|we.?d) like to invite you"),
     (10, r"invite you to (an?|the) (interview|next|following)"),
-    (10, r"(schedule|set ?up|arrange|book) (a|an|your) (call|chat|interview|screen|meeting|time)"),
+    # The article is optional and a few words may sit between it and the noun.
+    # "would like to set up a 15-30 minute virtual chat over MS Teams" is an
+    # interview invitation that this missed for wanting the noun immediately
+    # after the article, and so is "Book time with Flora". Reported by a tester
+    # whose invitation sat in the review queue while the list showed nothing.
+    (10, r"(schedule|set ?up|arrange|book) (?:(?:a|an|your) )?(?:[\w()/-]+ ){0,4}"
+         r"(call|chat|interview|screen|meeting|time)\b"),
     (9, r"(phone|video|initial|technical|final|onsite) (screen|screening|interview)"),
     (9, r"hiring manager would like"),
     (8, r"(share|provide|let us know) your availability"),
