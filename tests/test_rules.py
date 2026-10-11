@@ -863,3 +863,39 @@ def test_a_second_attempt_is_a_second_application_in_the_report():
     # And with the rule turned off, the old behaviour exactly.
     rows = report.select_rows(store, cutoff=None, repeat_window_days=3650)
     assert [(r[3]["date"], r[4]) for r in rows] == [("2026-08-29", 1)]
+
+
+# --- A shared calendar host is not an employer -------------------------------
+#
+# Reported from a phone: a Google Calendar invitation for a Xero interview,
+# which the agent had identified as Xero correctly and stored as Xero, appeared
+# in the list under GitLab. Both bookings arrive from
+# c_<hash>@group.calendar.google.com, and `canonical_by_domain` - whose job is
+# to join "Ea" from ea.com to "Electronic Arts" from a subject line - took that
+# host for an employer domain and rewrote every booking in the mailbox to
+# whichever employer won it.
+
+def _booking(id_, company, subject, date):
+    return {"id": id_, "status": "Invite to first interview", "date": date,
+            "received": date + "T10:00:00Z", "company": company,
+            "company_source": "agent", "position": "Senior Engineer",
+            "position_source": "agent", "from_name": company + " Interviews",
+            "from_address": "c_%s@group.calendar.google.com" % id_,
+            "subject": subject, "scores": {"reject": 0, "next": 0},
+            "explicit_round": None}
+
+
+def test_two_employers_booking_through_one_calendar_stay_apart():
+    store = {
+        "a": _booking("a", "GitLab", "Invitation: Your Interview with GitLab", "2026-09-03"),
+        "b": _booking("b", "Xero", "Invitation: Recruiter Connect with Xero", "2026-10-07"),
+    }
+    got = {row["id"]: name for _, name, _, row, _att in report.select_rows(store, None, 20)}
+    assert got == {"a": "GitLab", "b": "Xero"}
+
+
+def test_the_calendar_host_names_no_employer():
+    """`company_from_domain` must not answer "Google" for a booking either -
+    that is how the first of these rows was stored before the agent corrected
+    it."""
+    assert rules.company_from_domain("c_abc@group.calendar.google.com") is None

@@ -291,6 +291,12 @@ ATS_DOMAINS = {
     "jazzhr.com", "applytojob.com", "eightfold.ai", "phenompeople.com", "paylocity.com",
     "dayforcehcm.com", "linkedin.com", "indeed.com", "ziprecruiter.com", "glassdoor.com",
     "gmail.com", "outlook.com", "hotmail.com", "yahoo.com", "googlemail.com",
+    # A shared calendar host carries one employer's interview and the next
+    # one's, from addresses that differ only in a hash. Treating it as an
+    # employer domain made every booking in the mailbox answer to whichever
+    # employer won that domain: a Xero interview, correctly identified by the
+    # agent, was displayed as GitLab's.
+    "calendar.google.com",
 }
 SUBDOMAIN_NOISE = re.compile(
     r"^(e?mail|mailer|smtp|mx|notification|notifications|notify|reply|no-?reply|"
