@@ -899,3 +899,55 @@ def test_the_calendar_host_names_no_employer():
     that is how the first of these rows was stored before the agent corrected
     it."""
     assert rules.company_from_domain("c_abc@group.calendar.google.com") is None
+
+
+# --- One role written at two lengths -----------------------------------------
+#
+# Reported on three IBM mails, all for "127308 - Software Engineer - Cloud
+# Platform": the receipt carried the specialism and the other two did not, so
+# the application was two applications and the timeline broke in half. The
+# rules and the agent disagree about how much of a title to keep - the rules
+# read one line, the agent reads the whole message - and that disagreement is
+# permanent, so the grouping has to absorb it.
+
+def _role(id_, position, status, date):
+    return {"id": id_, "status": status, "date": date, "received": date + "T10:00:00Z",
+            "company": "Contoso", "company_source": "domain", "position": position,
+            "position_source": "rule", "from_address": "careers@contoso.com",
+            "from_name": "Contoso Careers", "subject": "About your application",
+            "scores": {"reject": 0, "next": 0}, "explicit_round": None}
+
+
+def test_a_short_title_and_a_long_one_are_one_application():
+    store = {
+        "a": _role("a", "Software Engineer - Cloud Platform", "Acknowledge", "2026-08-29"),
+        "b": _role("b", "Software Engineer", "Invite to test", "2026-08-30"),
+        "c": _role("c", "Software Engineer", "Reject", "2026-10-09"),
+    }
+    rows = report.select_rows(store, None, 20)
+    assert len({(r[1], rules.position_key(r[2]), r[4]) for r in rows}) == 1
+    # And the specialism is what the row is named, since that is the part the
+    # reader applied under.
+    assert {r[2] for r in rows} == {"Software Engineer - Cloud Platform"}
+
+
+def test_a_title_that_could_belong_to_two_longer_ones_is_left_alone():
+    """The bare title under an employer that has two specialisms could be
+    either, and guessing would merge two real applications."""
+    assert rules.fold_position_keys(
+        ["Software Engineer", "Software Engineer - Cloud Platform",
+         "Software Engineer - Security"]) == {}
+
+
+def test_a_longer_title_is_not_the_same_role_when_a_word_only_starts_the_same():
+    """position_key squashes to letters, which makes "Data Engineer" a prefix
+    of "Data Engineering Manager". Those are two jobs."""
+    assert rules.fold_position_keys(["Data Engineer", "Data Engineering Manager"]) == {}
+
+
+def test_a_requisition_id_is_never_the_best_name_for_a_role():
+    store = {
+        "a": _role("a", "Sr Software Developer (R0338030)", "Acknowledge", "2026-08-01"),
+        "b": _role("b", "Sr Software Developer", "Reject", "2026-09-01"),
+    }
+    assert {r[2] for r in report.select_rows(store, None, 20)} == {"Sr Software Developer"}

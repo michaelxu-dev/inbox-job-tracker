@@ -818,6 +818,68 @@ def strip_position_noise(position):
     return ", ".join(parts)
 
 
+def position_words(position):
+    """The title as a tuple of folded words, for comparing one title to another.
+
+    `position_key` squashes everything to letters and digits, which is right
+    for equality and wrong for asking whether one title begins with another:
+    "Data Engineer" squashes to a prefix of "Data Engineering Manager", and
+    those are two different jobs. Keeping the word boundaries keeps them apart.
+    """
+    key = strip_position_noise(position or "").casefold()
+    key = re.sub(r"\bsr\.?\b", "senior", key)
+    key = re.sub(r"\bjr\.?\b", "junior", key)
+    return tuple(w for w in re.split(r"[^a-z0-9]+", key) if w)
+
+
+def fold_position_keys(positions):
+    """Decide which of one employer's titles are the same role written shorter.
+
+    Takes every title seen for one employer and returns a map from each title's
+    `position_key` to the key of the role it belongs with. A title folds into a
+    longer one when its words are a prefix of the longer one's words:
+    "Software Engineer" into "Software Engineer - Cloud Platform".
+
+    **Why this exists.** The rules read the title out of one line and the agent
+    reads it out of the whole message, so the two disagree about how much of it
+    to keep - and the mails of one application disagree with each other, since
+    an acknowledgement names the role in its subject and a rejection names it
+    in a reference line. An application whose mails spell the role at different
+    lengths was two applications and a timeline broken in half. Reported on
+    three IBM mails, all "127308 - Software Engineer - Cloud Platform", one of
+    which carried the specialism and two of which did not.
+
+    **Where it stops.** A title that is a prefix of two different longer titles
+    is left alone. "Software Engineer" under an employer that also has
+    "Software Engineer - Cloud Platform" and "Software Engineer - Security"
+    could belong to either, and guessing would merge two real applications.
+    """
+    keys = {}
+    for position in positions:
+        words = position_words(position)
+        if words:
+            keys.setdefault(words, position_key(position))
+
+    folded = {}
+    for words, key in keys.items():
+        longer = [other for other in keys
+                  if len(other) > len(words) and other[:len(words)] == words]
+        # Exactly one, or it is ambiguous and nothing is folded.
+        if len(longer) == 1:
+            folded[key] = keys[longer[0]]
+    # A chain - "Engineer" into "Engineer Cloud" into "Engineer Cloud Platform"
+    # - resolves to its end, and a cycle cannot occur because every step is
+    # strictly longer.
+    for key in list(folded):
+        seen = {key}
+        target = folded[key]
+        while target in folded and target not in seen:
+            seen.add(target)
+            target = folded[target]
+        folded[key] = target
+    return folded
+
+
 def position_key(position):
     """Fold spellings of the same title: 'Sr Software Developer' and
     'Senior Software Developer' are one role, not two — and so are

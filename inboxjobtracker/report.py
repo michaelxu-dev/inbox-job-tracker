@@ -11,8 +11,8 @@ import json
 import re
 import sys
 
-from .rules import (ACK, ATS_DOMAINS, backfill_positions, name_key,
-                    position_key, CSV_STATUSES, INTERVIEW, INTERVIEW_ROUNDS,
+from .rules import (ACK, ATS_DOMAINS, backfill_positions, fold_position_keys, name_key,
+                    position_key, position_words, CSV_STATUSES, INTERVIEW, INTERVIEW_ROUNDS,
                     REJECT, STAGE_ORDER, SUBDOMAIN_NOISE)
 
 
@@ -159,23 +159,70 @@ def resolve_company(row, canon, by_domain):
     return canon.get(name_key(name), name)
 
 
-def canonical_positions(store, canon, by_domain):
-    """One role's title, spelled the plainest way it was seen.
+# A requisition id wearing letters - "R0338030", "JR104221" - which
+# `POSITION_NOISE` does not catch because it is not digits alone. It names the
+# posting, not the job, so a variant carrying one is never the best name for it.
+REQUISITION_TOKEN = re.compile(r"\b[A-Z]{1,3}\d{4,}\b")
+
+
+def folds_by_company(store, canon, by_domain):
+    """Per employer, which of its titles are the same role written shorter.
+
+    See `rules.fold_position_keys`. Built once per report and consulted
+    wherever a title becomes a key, so the list, the CSV and the page cannot
+    disagree about which rows are one application.
+    """
+    titles = {}
+    for row in store.values():
+        position = row.get("position")
+        if not position:
+            continue
+        titles.setdefault(name_key(resolve_company(row, canon, by_domain)), set()).add(position)
+    return {company: fold_position_keys(seen) for company, seen in titles.items()}
+
+
+def folded_key(company_key, position, folds):
+    key = position_key(position)
+    return folds.get(company_key, {}).get(key, key)
+
+
+def canonical_positions(store, canon, by_domain, folds=None):
+    """One role's title, spelled the way that says most about the job.
 
     The mails of a single application disagree about the decoration — the
     acknowledgement says "Senior Backend Engineer, AMER", the rejection just
-    "Senior Backend Engineer". They are one role now that `position_key` folds
-    them, so the rows must also read as one: take the variant seen most often,
-    and the shortest of those, since decoration only ever adds.
+    "Senior Backend Engineer" — and about how much of the title to keep at all:
+    "Software Engineer" in one and "Software Engineer - Cloud Platform" in the
+    next. They are one role, so the rows must read as one.
+
+    Now that a group can hold "Software Engineer" beside "Software Engineer -
+    Cloud Platform", the choice is the variant with the most words: the
+    specialism is the part the reader applied under, and taking the shortest
+    outright threw it away. Variants carrying a requisition id are passed over
+    first - "Sr Software Developer (R0338030)" is not a better name for the
+    job than "Sr Software Developer", and on one real mailbox that was the
+    only thing the longest variant added. Then the one seen most often, then
+    the shortest, as before.
+
+    The cost of preferring more words is a title that keeps a scrap of the
+    sentence it was lifted from: "Staff Software Engineer, Horizon team role"
+    where "Staff Software Engineer, Horizon" was shorter and no less correct.
+    That is a worse name for the same application, where the alternative was a
+    worse name and a specialism lost.
     """
+    folds = folds if folds is not None else {}
     counts = {}
     for row in store.values():
         position = row.get("position")
         if not position:
             continue
-        key = (name_key(resolve_company(row, canon, by_domain)), position_key(position))
+        company = name_key(resolve_company(row, canon, by_domain))
+        key = (company, folded_key(company, position, folds))
         counts.setdefault(key, collections.Counter())[position] += 1
-    return {key: min(seen.items(), key=lambda kv: (-kv[1], len(kv[0]), kv[0]))[0]
+    return {key: min(seen.items(),
+                     key=lambda kv: (1 if REQUISITION_TOKEN.search(kv[0]) else 0,
+                                     -len(position_words(kv[0])), -kv[1],
+                                     len(kv[0]), kv[0]))[0]
             for key, seen in counts.items()}
 
 
@@ -262,7 +309,8 @@ def select_rows(store, cutoff=None, repeat_window_days=DEFAULT_REPEAT_WINDOW_DAY
     canon = canonical_names(store)
     by_domain = canonical_by_domain(store)
     fallback = backfill_positions(store, lambda row: resolve_company(row, canon, by_domain))
-    canon_position = canonical_positions(store, canon, by_domain)
+    folds = folds_by_company(store, canon, by_domain)
+    canon_position = canonical_positions(store, canon, by_domain, folds)
 
     by_role = {}
     for row in sorted(store.values(), key=lambda r: (r["received"], r.get("id") or "")):
@@ -274,10 +322,13 @@ def select_rows(store, cutoff=None, repeat_window_days=DEFAULT_REPEAT_WINDOW_DAY
         # Presentation only — the store keeps a real null so a later run can
         # still backfill a title once one turns up in other mail.
         position = row.get("position") or fallback.get(name_key(name)) or "Unknown"
-        position = canon_position.get((name_key(name), position_key(position)), position)
+        company_key = name_key(name)
+        position = canon_position.get(
+            (company_key, folded_key(company_key, position, folds)), position)
         # Sorted by arrival above, so each list is already in the order
         # `attempts` needs to read it.
-        by_role.setdefault((name_key(name), position_key(position)), []).append(
+        by_role.setdefault(
+            (company_key, folded_key(company_key, position, folds)), []).append(
             (row["received"], name, position, row))
 
     # One row per employer + role + stage, within one attempt at that role. An
