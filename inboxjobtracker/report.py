@@ -111,11 +111,20 @@ def canonical_by_domain(store):
     """Mail from an employer's own domain is that employer, however the name came
     out: ea.com yields "Ea" from the domain but "Electronic Arts" from a subject
     line, and folding on spelling alone never joins those. ATS and webmail
-    domains carry many employers, so they are never grouped."""
+    domains carry many employers, so they are never grouped.
+
+    A name somebody typed is not used here, only the ones derived from the
+    mail. It outranks everything, so one correction took the domain and
+    renamed every other application to the same employer: two applications to
+    one company, a correction to one of them, and the other silently became
+    "Acme Canada" too. A typed name still spreads through `canonical_names`,
+    which joins spellings of *that* name - "ibm" to "IBM" - and that is the
+    propagation the edit screen was built for. Crossing to a different name is
+    not."""
     best = {}
     for row in store.values():
         name, address = row.get("company"), (row.get("from_address") or "").lower()
-        if not name or "@" not in address:
+        if not name or "@" not in address or row.get("company_source") == "user":
             continue
         domain = SUBDOMAIN_NOISE.sub("", address.split("@")[-1])
         if domain in ATS_DOMAINS or any(domain.endswith("." + d) for d in ATS_DOMAINS):
@@ -153,9 +162,16 @@ def resolve_company(row, canon, by_domain):
     name = row.get("company") or "Unknown"
     address = (row.get("from_address") or "").lower()
     domain = SUBDOMAIN_NOISE.sub("", address.split("@")[-1]) if "@" in address else ""
-    # The domain's name still goes through the spelling fold: thalesgroup.com
-    # yields "Thalesgroup", which is the same employer as a Workday mail's "Thales".
-    name = by_domain.get(domain) or name
+    # A name somebody typed for this message is the answer for this message.
+    # Everything else here derives a name from mail that the reader has just
+    # overruled, and letting the domain overrule them back discards the
+    # correction entirely - which it did, silently, the first time this tried
+    # to stop a correction spreading.
+    if row.get("company_source") != "user":
+        # The domain's name still goes through the spelling fold:
+        # thalesgroup.com yields "Thalesgroup", which is the same employer as a
+        # Workday mail's "Thales".
+        name = by_domain.get(domain) or name
     return canon.get(name_key(name), name)
 
 

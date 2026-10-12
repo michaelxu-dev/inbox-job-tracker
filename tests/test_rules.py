@@ -951,3 +951,45 @@ def test_a_requisition_id_is_never_the_best_name_for_a_role():
         "b": _role("b", "Sr Software Developer", "Reject", "2026-09-01"),
     }
     assert {r[2] for r in report.select_rows(store, None, 20)} == {"Sr Software Developer"}
+
+
+# --- A typed name belongs to the message it was typed for --------------------
+#
+# Reported: one company with two roles is two applications, and correcting the
+# employer on one of them renamed the other too. A typed name outranks
+# everything, so it won the domain map - and the domain map is what joins names
+# that never fold together, across every application from that sender.
+
+def _at_ibm(id_, position, company, source):
+    return {"id": id_, "status": "Acknowledge", "date": "2026-08-%s" % id_,
+            "received": "2026-08-%sT10:00:00Z" % id_, "company": company,
+            "company_source": source, "position": position, "position_source": "rule",
+            "from_address": "talent@ibm.com", "from_name": "IBM",
+            "subject": "Thanks for applying", "scores": {"reject": 0, "next": 0},
+            "explicit_round": None}
+
+
+def _named(store):
+    return {row["id"]: name for _, name, _, row, _att in report.select_rows(store, None, 20)}
+
+
+def test_correcting_one_application_leaves_the_others_alone():
+    store = {"10": _at_ibm("10", "Software Engineer", "Acme Canada", "user"),
+             "11": _at_ibm("11", "Data Engineer", "IBM", "domain")}
+    assert _named(store) == {"10": "Acme Canada", "11": "IBM"}
+
+
+def test_a_spelling_correction_still_spreads():
+    """The propagation the edit screen was built for: one employer, one name,
+    however its mails spell it."""
+    store = {"10": _at_ibm("10", "Software Engineer", "IBM", "user"),
+             "11": _at_ibm("11", "Data Engineer", "Ibm", "domain")}
+    assert _named(store) == {"10": "IBM", "11": "IBM"}
+
+
+def test_a_typed_name_is_not_overruled_by_the_domain():
+    """The first attempt at this kept a correction from spreading by dropping
+    typed names from the domain map, and the domain then renamed the corrected
+    row back - losing the correction altogether."""
+    store = {"10": _at_ibm("10", "Software Engineer", "Acme Canada", "user")}
+    assert _named(store) == {"10": "Acme Canada"}
