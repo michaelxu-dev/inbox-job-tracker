@@ -141,7 +141,12 @@ def cmd_classify(cfg, args):
         # Requiring one of every verdict queued a confident Unclear - a
         # newsletter, an account notice - for review purely because no employer
         # could be derived from it, which is exactly what should be expected.
-        needs_company = record["status"] in rules.CSV_STATUSES and not company
+        # No employer, or one read off an ATS tenant address - which is not a
+        # name anybody wrote and was wrong every time it fired in a real
+        # mailbox. A plausible wrong name is worse than none: nothing about it
+        # invites doubt, so the only remedy is to put it in front of a person.
+        needs_company = record["status"] in rules.CSV_STATUSES and (
+            not company or rules.tenant_guess(company_source))
         # A confident status says nothing about the employer, and the audit
         # reaches acknowledgements last, so a wrong name would sit unchecked.
         conflict = (record["status"] in rules.CSV_STATUSES
@@ -150,10 +155,13 @@ def cmd_classify(cfg, args):
             if conflict and verdict["confidence"] != "low":
                 why = ("company '%s' came from the sender domain, but the sender "
                        "name or subject says '%s'" % (company, conflict))
+            elif rules.tenant_guess(company_source):
+                why = ("the employer was read off the sending address (%s) and "
+                       "the mail may never name it" % company)
             else:
                 why = verdict["note"] or "no company name could be derived"
             review.append(rules.review_item(
-                cand, record, verdict, company, "uncertain", why))
+                cand, record, verdict, company, "uncertain", why, company_source))
         elif record["status"] in rules.CSV_STATUSES and not record.get("audited"):
             # Being confident is how the rules have been wrong before, so a
             # slice of confident verdicts is checked each run too.

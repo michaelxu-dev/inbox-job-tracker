@@ -926,20 +926,68 @@ GENERIC_LOCALPART = re.compile(
     r"apply|candidate|help\.candidate|talentcentral|team|admin|alerts?)$", re.I)
 
 
+# Webmail is on `ATS_DOMAINS` for one reason only - never group employers by
+# it - and a local part there is a person, not a tenant. Michael's own address
+# became the employer "Michael Xuch" on two of his own messages.
+WEBMAIL_DOMAINS = {"gmail.com", "googlemail.com", "outlook.com", "hotmail.com",
+                   "yahoo.com", "yahoo.ca", "yahoo.co.uk", "live.com", "icloud.com",
+                   "me.com", "aol.com", "protonmail.com", "proton.me", "gmx.com"}
+
+
 def company_from_ats_localpart(address):
     """An ATS tenant address names its employer in the local part —
     contoso@myworkday.com, fabrikam@myworkday.com. Used only as a last
-    resort, so a real display name or body mention still wins."""
+    resort, so a real display name or body mention still wins.
+
+    A guess, and labelled one: `guess_company` reports the source, and
+    `tenant_guess` is what the callers check before showing it to anybody or
+    offering it to the agent. In one real mailbox of 335 messages this rule
+    fired eight times and was wrong eight times - "Edel Fa Sender" for an
+    Oracle tenant whose employer was Fortinet, the reader's own name twice,
+    and the ATS vendor's own name once. It stays because the Workday and
+    Greenhouse shape it was written for is real, and because a wrong name
+    nobody is asked about is the actual fault.
+    """
     if "@" not in (address or ""):
         return None
     local, domain = address.lower().rsplit("@", 1)
     domain = SUBDOMAIN_NOISE.sub("", domain)
-    if not (domain in ATS_DOMAINS or any(domain.endswith("." + d) for d in ATS_DOMAINS)):
+    if domain in WEBMAIL_DOMAINS or any(domain.endswith("." + d) for d in WEBMAIL_DOMAINS):
+        return None
+    matched = next((d for d in ATS_DOMAINS
+                    if domain == d or domain.endswith("." + d)), None)
+    if matched is None:
         return None
     local = local.split("+")[0]
     if GENERIC_LOCALPART.match(local) or len(local) < 3:
         return None
+    # The vendor is not the employer: workday@otp.workday.com is Workday
+    # telling you about somebody else's job. Compared against the vendor's own
+    # domain rather than the sending host, which carries a routing label -
+    # "otp" - that is nobody's name.
+    if local.replace(".", "").replace("-", "") == matched.split(".")[0]:
+        return None
     return local.replace("-", " ").replace(".", " ").title()
+
+
+def tenant_guess(company_source):
+    """Whether this employer name was read off an ATS tenant address.
+
+    Not a name anyone wrote: it is the only source that invents a plausible
+    employer out of routing. Callers use it to put the message in front of a
+    person, and to keep it out of the hint the agent is given - the agent was
+    handed "Edel Fa" and agreed with it at 97%.
+
+    Only the source, not the name. Checking whether the name matches the
+    tenant looked like a way to catch the rows the agent has already agreed
+    with - they are relabelled "agent" and the source stops saying where the
+    name came from - but on a real mailbox it matched nineteen rows and all
+    nineteen were right: Motorola Solutions, Arctic Wolf, RBC, Mastercard.
+    A Workday tenant usually *is* its employer, which is the whole reason the
+    rule exists. There is no signal there, only the question of whether the
+    name means anything, and nothing here can answer that.
+    """
+    return company_source == "ats-localpart"
 
 
 def guess_company(cand):
@@ -975,12 +1023,18 @@ def company_conflict(cand, company, source):
     return None
 
 
-def review_item(cand, record, verdict, company, reason, why):
+def review_item(cand, record, verdict, company, reason, why, company_source=None):
     return {
         "id": cand["id"],
         "reason": reason,
         "rule_status": verdict["status"],
-        "rule_company": company,
+        # A tenant guess is not offered to the agent. It is a name invented
+        # from routing, and handing it over as "the rules think this is the
+        # employer" is how the agent came back with "Edel Fa" at 97% for a
+        # mail whose employer was Fortinet and which never named anybody.
+        # With no hint it answers from the text, and "not found" is the
+        # truthful answer the reader can then correct.
+        "rule_company": None if tenant_guess(company_source) else company,
         "rule_position": record["position"],
         "why_review": why,
         "date": record["date"],

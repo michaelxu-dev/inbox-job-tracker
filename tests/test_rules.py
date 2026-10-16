@@ -993,3 +993,45 @@ def test_a_typed_name_is_not_overruled_by_the_domain():
     row back - losing the correction altogether."""
     store = {"10": _at_ibm("10", "Software Engineer", "Acme Canada", "user")}
     assert _named(store) == {"10": "Acme Canada"}
+
+
+# --- A name read off a routing address ---------------------------------------
+#
+# Reported: an Oracle Recruiting acknowledgement for a Fortinet job was filed
+# under "Edel Fa Sender", which is the sending tenant. The mail names no
+# employer anywhere, so there was nothing for the reader to notice - a
+# plausible wrong name invites no doubt at all. In one real mailbox this rule
+# fired eight times and was wrong eight times.
+
+def test_webmail_is_not_a_tenant():
+    """The reader's own address became the employer "Michael Xuch" twice."""
+    assert rules.company_from_ats_localpart("michael.xuch@gmail.com") is None
+
+
+def test_the_ats_vendor_is_not_the_employer():
+    assert rules.company_from_ats_localpart("workday@otp.workday.com") is None
+    assert rules.company_from_ats_localpart("greenhouse@mail.greenhouse.io") is None
+
+
+def test_a_real_tenant_still_names_its_employer():
+    """The shape the rule was written for, and the reason it stays."""
+    assert rules.company_from_ats_localpart("contoso@myworkday.com") == "Contoso"
+
+
+def test_a_tenant_guess_is_not_offered_to_the_agent():
+    """The agent was handed "Edel Fa" as the rules' guess and agreed with it at
+    97%. With no hint it answers from the text, and "not found" is the truthful
+    answer a person can then correct."""
+    item = rules.review_item(
+        {"id": "x", "subject": "s", "from_name": "n", "from_address": "a@b.com"},
+        {"position": None, "date": "2026-10-15", "scores": {}},
+        {"status": "Acknowledge"}, "Edel Fa Sender", "uncertain", "why",
+        company_source="ats-localpart")
+    assert item["rule_company"] is None
+
+    kept = rules.review_item(
+        {"id": "x", "subject": "s", "from_name": "n", "from_address": "a@b.com"},
+        {"position": None, "date": "2026-10-15", "scores": {}},
+        {"status": "Acknowledge"}, "Fortinet", "uncertain", "why",
+        company_source="text")
+    assert kept["rule_company"] == "Fortinet"
