@@ -416,5 +416,16 @@
   "expect": "Invite to first interview",
   "why": "an invitation worded as a chat, with the length and the tool between the article and the noun - 'set up a 15-30 minute virtual chat over MS Teams'; reported by a tester whose invitation sat in the review queue while the list showed nothing",
   "body": "Hi Chengwen,\n\nThank you for your recent application for Software Integration Engineer (Cybersecurity / Networking) here at Northwind Maritime. I have reviewed your application and would like to set up a 15-30 minute virtual chat over MS Teams to discuss the role and your interests a bit further.\n\nBook time with Flora Cheung: Northwind Coffee Chat\n\nKind regards,\nFlora\nTalent Acquisition"
+ },
+ {
+  "id": "d39",
+  "folder": "inbox",
+  "from_name": "no-reply@us.greenhouse-mail.io",
+  "from_address": "no-reply@us.greenhouse-mail.io",
+  "received": "2026-10-16T06:06:09Z",
+  "subject": "Contoso Labs - We received your application!",
+  "expect": "Acknowledge",
+  "why": "a receipt whose only job words are 'Thanks for applying' and 'received your application', from an ATS vendor's mail domain that one of the two ATS lists did not have; it came out Unclear at high confidence, which is the gate saying the mail is not about a job at all",
+  "body": "Hi Michael,\n\nThanks for applying - we're excited you're interested in helping secure the software supply chain with us! Our team is reviewing your background and will be in touch if there's a strong match.\n\nWe'll be in touch soon!\n\nThe Contoso Labs Talent Team\n\nThis email is from an unmonitored inbox - please don't reply here"
  }
 ]

@@ -34,6 +34,13 @@ ATS_DOMAINS = (
     "brassring.com", "silkroad.com", "jazzhr.com", "applytojob.com", "eightfold.ai",
     "phenompeople.com", "hiringthing.com", "paylocity.com", "dayforcehcm.com",
     "linkedin.com", "indeed.com", "ziprecruiter.com", "glassdoor.com",
+    # The vendors' *mail* domains, which are not their main ones and were in
+    # the other ATS list but not this one. A Greenhouse acknowledgement from
+    # us.greenhouse-mail.io was therefore not hiring correspondence at all,
+    # and came out Unclear at high confidence - the gate's way of saying "this
+    # is not about a job".
+    "greenhouse-mail.io", "teamtailor-mail.com", "kula.ai", "modernloop.io",
+    "njoyn.com", "shl.com", "ats.rippling.com",
 )
 
 

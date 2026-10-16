@@ -463,7 +463,13 @@ JOB_CONTEXT = re.compile(
     r"position|role|vacancy|opening|req(uisition)?\s*id|"
     r"interview|screening|assessment|hiring manager|"
     r"applied (for|to)|application (for|to)|your application (for|to|status)|"
-    r"thank you for (applying|your application))\b",
+    # "Thanks for applying", not only "Thank you for applying", and "we
+    # received your application", which names no role and no stage and was the
+    # whole of the only sentence a Greenhouse receipt offered. Added as
+    # phrasings rather than a bare "your application", which an insurer or a
+    # bank says too and which would let their mail into a list of jobs.
+    r"thank(s| you)? for (applying|your application)|"
+    r"(received|reviewing) your (application|background))\b",
     re.I,
 )
 
