@@ -12,14 +12,22 @@ import re
 import sys
 
 from .rules import (ACK, ATS_DOMAINS, backfill_positions, fold_position_keys, name_key,
+                    unknown_labels,
                     position_key, position_words, CSV_STATUSES, INTERVIEW, INTERVIEW_ROUNDS,
                     REJECT, STAGE_ORDER, SUBDOMAIN_NOISE)
 
 
 # "user" is a correction someone typed. Nothing derived outranks it, and the
 # iOS app writes it into the same store.json this reads.
-SOURCE_RANK = {"user": -1, "agent": 0, "text": 1, "sender-name": 2, "domain": 3,
-               "ats-localpart": 4, "unknown": 5}
+#
+# "ai" is that app's spelling of "agent", and both appear in a store the two
+# tools have shared. Missing it cost the lookup its default of 4 - worse than
+# a name read off the sending domain - so on a real mailbox a Xero interview
+# booked through karat.io was filed under "Karat", the vendor, in the Python
+# and under "Xero" in Swift. The same mismatch runs the other way:
+# `CompanySource` in Swift did not know "agent" and scored it `unknown`.
+SOURCE_RANK = {"user": -1, "agent": 0, "ai": 0, "text": 1, "sender-name": 2,
+               "domain": 3, "ats-localpart": 4, "unknown": 5}
 
 
 def spelling_rank(row):
@@ -325,6 +333,7 @@ def select_rows(store, cutoff=None, repeat_window_days=DEFAULT_REPEAT_WINDOW_DAY
     canon = canonical_names(store)
     by_domain = canonical_by_domain(store)
     fallback = backfill_positions(store, lambda row: resolve_company(row, canon, by_domain))
+    unknowns = unknown_labels(store, lambda row: resolve_company(row, canon, by_domain))
     folds = folds_by_company(store, canon, by_domain)
     canon_position = canonical_positions(store, canon, by_domain, folds)
 
@@ -337,7 +346,8 @@ def select_rows(store, cutoff=None, repeat_window_days=DEFAULT_REPEAT_WINDOW_DAY
         name = resolve_company(row, canon, by_domain)
         # Presentation only — the store keeps a real null so a later run can
         # still backfill a title once one turns up in other mail.
-        position = row.get("position") or fallback.get(name_key(name)) or "Unknown"
+        position = (row.get("position") or fallback.get(name_key(name))
+                    or unknowns.get(row["id"]) or "Unknown")
         company_key = name_key(name)
         position = canon_position.get(
             (company_key, folded_key(company_key, position, folds)), position)

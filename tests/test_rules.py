@@ -1035,3 +1035,83 @@ def test_a_tenant_guess_is_not_offered_to_the_agent():
         {"status": "Acknowledge"}, "Fortinet", "uncertain", "why",
         company_source="text")
     assert kept["rule_company"] == "Fortinet"
+
+
+# --- Two roles at one employer, and a mail that names neither ----------------
+#
+# Asked on 小红书 by somebody who had seen it coming: "同一家公司投两个岗位，
+# 后续邮件又没写岗位名时，会先留成待确认吗？这种情况宁可暂时空着，也不想被
+# 归到错误的申请里。" It did not. It filed the mail under whichever title it
+# had seen first.
+
+def _at(id_, position, status, date, company="Contoso"):
+    return {"id": id_, "status": status, "date": date, "received": date + "T10:00:00Z",
+            "company": company, "company_source": "domain", "position": position,
+            "position_source": "rule", "from_address": "careers@contoso.com",
+            "from_name": company, "subject": "About your application",
+            "scores": {"reject": 0, "next": 0}, "explicit_round": None}
+
+
+def _roles(store):
+    return {r[3]["id"]: r[2] for r in report.select_rows(store, None, 20)}
+
+
+def test_a_mail_naming_no_role_is_not_filed_under_a_guess():
+    store = {"a": _at("a", "Backend Engineer", "Acknowledge", "2026-08-01"),
+             "b": _at("b", "Data Scientist", "Acknowledge", "2026-08-02"),
+             "c": _at("c", None, "Reject", "2026-09-01")}
+    # Not "Backend Engineer", which is what it used to be. Unnumbered because
+    # it is the only such message here.
+    assert _roles(store)["c"] == "Unknown"
+
+
+def test_two_such_mails_do_not_become_one_application():
+    """Leaving the title blank is not neutral: every one of them becomes
+    "Unknown" at that employer and they merge into an invented application. On
+    the fixtures that produced a history running interview, then
+    acknowledgement."""
+    store = {"a": _at("a", "Backend Engineer", "Acknowledge", "2026-08-01"),
+             "b": _at("b", "Data Scientist", "Acknowledge", "2026-08-02"),
+             "c": _at("c", None, "Reject", "2026-09-01"),
+             "d": _at("d", None, "Invite to first interview", "2026-09-05")}
+    named = _roles(store)
+    assert named["c"] == "Unknown-1"
+    assert named["d"] == "Unknown-2"
+
+
+def test_one_role_is_still_filled_in():
+    """The case the backfill was written for: an interview booking names no
+    role, and that employer has exactly one."""
+    store = {"a": _at("a", "Backend Engineer", "Acknowledge", "2026-08-01"),
+             "c": _at("c", None, "Invite to first interview", "2026-09-01")}
+    assert _roles(store)["c"] == "Backend Engineer"
+
+
+def test_the_numbering_is_per_employer_and_in_arrival_order():
+    store = {"a": _at("a", "Backend Engineer", "Acknowledge", "2026-08-01"),
+             "b": _at("b", "Data Scientist", "Acknowledge", "2026-08-02"),
+             "c": _at("c", None, "Reject", "2026-09-05"),
+             "x": _at("x", "Platform Engineer", "Acknowledge", "2026-08-01", company="Fabrikam"),
+             "y": _at("y", "SRE", "Acknowledge", "2026-08-02", company="Fabrikam"),
+             "z": _at("z", None, "Reject", "2026-09-01", company="Fabrikam")}
+    for row in ("x", "y", "z"):
+        store[row]["from_address"] = "careers@fabrikam.com"
+    named = _roles(store)
+    assert named["c"] == "Unknown", "one apiece, so neither needs a number"
+    assert named["z"] == "Unknown"
+
+
+def test_an_employer_with_no_known_title_is_left_as_it_was():
+    """Karat: two mails, neither naming a role, and nothing to borrow one
+    from. They still pool under a single "Unknown" - which has its own fault,
+    an entry whose stages run backwards, but it is a different fault and
+    splitting it apart turned one entry into four."""
+    store = {"a": _at("a", None, "Invite to first interview", "2026-10-16"),
+             "b": _at("b", None, "Acknowledge", "2026-10-20")}
+    assert set(_roles(store).values()) == {"Unknown"}
+
+
+def test_one_such_message_needs_no_number():
+    """Nothing for it to collide with, and "Unknown" reads better."""
+    store = {"a": _at("a", None, "Acknowledge", "2026-08-01")}
+    assert _roles(store) == {"a": "Unknown"}

@@ -898,19 +898,88 @@ def position_key(position):
 
 def backfill_positions(store, company_of=None):
     """Scheduling and reminder mail ("Your interview with GitLab is scheduled")
-    names no role. Reuse a title seen in any other mail from that employer.
+    names no role. Reuse a title seen in any other mail from that employer —
+    but only when that employer has one title to reuse.
 
     `company_of` gives the name a row is filed under. Keying on the raw guess
     missed employers whose mails disagree on the name: Treasure AI's receipt was
     guessed as "Teamtailor Mail" from its ATS domain, so the title it carried
-    never reached the interview booking filed as "Treasure AI"."""
+    never reached the interview booking filed as "Treasure AI".
+
+    **Why the count matters.** Asked on 小红书 by somebody who had seen the
+    problem coming: two roles at one employer, and a later mail that names
+    neither. This used to take whichever title it had seen first and file the
+    mail under it - a rejection for the data role landing in the backend role's
+    timeline, with nothing on screen to say it was a guess. One title is a
+    reasonable inference; two is a coin toss with somebody's job search on it.
+    `ambiguous_roles` is how those mails reach a person instead."""
     company_of = company_of or (lambda row: row.get("company"))
-    by_company = {}
+    seen = {}
     for row in store.values():
         name = company_of(row)
         if row.get("position") and name:
-            by_company.setdefault(name_key(name), row["position"])
-    return by_company
+            seen.setdefault(name_key(name), set()).add(position_key(row["position"]))
+    titles = {}
+    for row in store.values():
+        name = company_of(row)
+        if row.get("position") and name and len(seen.get(name_key(name), ())) == 1:
+            titles.setdefault(name_key(name), row["position"])
+    return titles
+
+
+def unknown_labels(store, company_of=None):
+    """Names for the messages whose role cannot be inferred.
+
+    Returns {message id: "Unknown-1", ...}, numbered per employer in the order
+    the mail arrived.
+
+    **Why a numbered name rather than a blank one.** Asked on 小红书 by
+    somebody who had seen the problem coming: two roles at one employer, and a
+    later mail that names neither. Filing it under whichever title was seen
+    first is a coin toss with somebody's job search on it. But simply leaving
+    the title blank is not neutral either - every such message then becomes
+    "Unknown" at that employer, and they merge into one invented application:
+    on the fixtures it produced a Contoso history running interview, then
+    acknowledgement, which is not a history of anything.
+
+    A distinct name keeps each one on its own without touching the grouping
+    key, which is employer + role and is relied on by the unread dot, the
+    statistics, the CSV and the Python parity harness alike.
+
+    The number is positional, so a scan that later reaches *older* mail - a
+    widened window, the junk folder newly switched on - can renumber the ones
+    after it. That costs an application its identity: its dot comes back, a
+    dismissed note returns. No data is lost and nothing is misfiled, which is
+    the trade this was chosen for.
+    """
+    company_of = company_of or (lambda row: row.get("company"))
+    seen = {}
+    for row in store.values():
+        name = company_of(row)
+        if row.get("position") and name:
+            seen.setdefault(name_key(name), set()).add(position_key(row["position"]))
+
+    pending = {}
+    for row in sorted(store.values(), key=lambda r: (r["received"], r.get("id") or "")):
+        name = company_of(row)
+        if row.get("position") or not name:
+            continue
+        # More than one, not "other than one". An employer with no known title
+        # at all has always pooled its role-less mail under a single "Unknown",
+        # and it still does: splitting those apart turned one Karat entry into
+        # four and broke the rule that makes two receipts for one role two
+        # attempts at it. That pooling has its own fault - Karat's interview
+        # booking and acknowledgement are one entry running backwards - but it
+        # is a different fault, with nobody asking for it, and it is not this
+        # change's to make.
+        if row.get("status") in CSV_STATUSES and len(seen.get(name_key(name), ())) > 1:
+            pending.setdefault(name_key(name), []).append(row["id"])
+
+    # One such message needs no number: there is nothing for it to collide
+    # with, and "Unknown" reads better than "Unknown-1".
+    return {row_id: "Unknown-%d" % (index + 1)
+            for ids in pending.values() if len(ids) > 1
+            for index, row_id in enumerate(ids)}
 
 
 def restore_casing(name, text):
