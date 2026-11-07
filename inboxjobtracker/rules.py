@@ -838,13 +838,22 @@ def position_words(position):
     return tuple(w for w in re.split(r"[^a-z0-9]+", key) if w)
 
 
-def fold_position_keys(positions):
+def fold_position_keys(positions, typed=()):
     """Decide which of one employer's titles are the same role written shorter.
 
     Takes every title seen for one employer and returns a map from each title's
     `position_key` to the key of the role it belongs with. A title folds into a
     longer one when its words are a prefix of the longer one's words:
     "Software Engineer" into "Software Engineer - Cloud Platform".
+
+    `typed` is the subset of those titles a reader entered by hand. Those never
+    fold into anything. Somebody who opens an application and names the role
+    has looked at the one application and said what it is; re-deriving over
+    that is the same mistake `company_source == "user"` already outranks, and
+    the correction has to survive the next scan or there is no point offering
+    it. Found on a mailbox with two live Microsoft requisitions, where the
+    shorter title was the one the reader had typed and folding it away filed
+    his October application under September's role name.
 
     **Why this exists.** The rules read the title out of one line and the agent
     reads it out of the whole message, so the two disagree about how much of it
@@ -866,8 +875,12 @@ def fold_position_keys(positions):
         if words:
             keys.setdefault(words, position_key(position))
 
+    protected = {position_key(position) for position in typed}
+
     folded = {}
     for words, key in keys.items():
+        if key in protected:
+            continue
         longer = [other for other in keys
                   if len(other) > len(words) and other[:len(words)] == words]
         # Exactly one, or it is ambiguous and nothing is folded.

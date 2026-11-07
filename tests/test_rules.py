@@ -846,6 +846,82 @@ def test_a_long_application_measured_mail_to_mail_stays_one():
     assert got == [1, 1, 1, 1]
 
 
+# --- A receipt after a rejection is a new application, whatever the gap ------
+#
+# Reported from a phone: two Microsoft applications, four mails, and the two
+# from October missing from the list. Microsoft declined one requisition on
+# 2026-09-24 and acknowledged the next on 2026-10-07 — thirteen days, inside
+# any sensible window — so the October receipt was read as the September
+# application's receipt arriving twice, and the stage-level collapse in
+# `select_rows` then dropped both of October's mails behind the earlier pair.
+#
+# The window cannot answer this one. Nobody is sent a receipt for an
+# application that has already been refused, so the interval carries no
+# information: a receipt after a rejection is a new application at thirteen
+# days and at one.
+
+def test_a_receipt_after_a_rejection_is_a_new_attempt():
+    mails = [_mail("Acknowledge", "2026-07-31"), _mail("Reject", "2026-09-24"),
+             _mail("Acknowledge", "2026-10-07"), _mail("Reject", "2026-10-28")]
+    got = report.attempts([(m["received"], m["status"]) for m in mails], 20)
+    assert got == [1, 1, 2, 2]
+
+
+def test_a_receipt_the_day_after_a_rejection_is_still_a_new_attempt():
+    """No window is consulted, so one day is as good as thirteen."""
+    mails = [_mail("Acknowledge", "2026-07-31"), _mail("Reject", "2026-09-24"),
+             _mail("Acknowledge", "2026-09-25")]
+    got = report.attempts([(m["received"], m["status"]) for m in mails], 20)
+    assert got == [1, 1, 2]
+
+
+def test_a_rejection_does_not_start_an_attempt_by_itself():
+    """Only a receipt starts one. Two rejections for a role that was
+    acknowledged once are one application, however far apart — the second is
+    a resend, and `select_rows` collapses it."""
+    mails = [_mail("Acknowledge", "2026-01-11"), _mail("Reject", "2026-06-30"),
+             _mail("Reject", "2026-09-30")]
+    got = report.attempts([(m["received"], m["status"]) for m in mails], 20)
+    assert got == [1, 1, 1]
+
+
+def test_the_ended_flag_resets_with_the_attempt():
+    """Third application after a second rejection, not a third one carried
+    over from the first. Off-by-one in the reset would number these 1,1,2,2,4."""
+    mails = [_mail("Acknowledge", "2026-01-01"), _mail("Reject", "2026-02-01"),
+             _mail("Acknowledge", "2026-02-10"), _mail("Reject", "2026-03-01"),
+             _mail("Acknowledge", "2026-03-10")]
+    got = report.attempts([(m["received"], m["status"]) for m in mails], 20)
+    assert got == [1, 1, 2, 2, 3]
+
+
+def test_the_october_microsoft_pair_reaches_the_report():
+    """End to end. Both applications, four rows, two attempts."""
+    def ack(id_, date, position):
+        return {"id": id_, "received": date + "T09:00:00Z", "date": date,
+                "status": "Acknowledge", "company": "Microsoft",
+                "position": position, "company_source": "agent",
+                "position_source": "agent", "from_address": "x@microsoft.com",
+                "subject": "Thank you for your application!"}
+
+    def rej(id_, date, position):
+        row = ack(id_, date, position)
+        row["status"] = "Reject"
+        row["subject"] = "Thank you for your interest in Microsoft"
+        return row
+
+    role = "Senior Software Engineer"
+    store = {
+        "a": ack("a", "2026-07-31", role), "b": rej("b", "2026-09-24", role),
+        "c": ack("c", "2026-10-07", role), "d": rej("d", "2026-10-28", role),
+    }
+    rows = report.select_rows(store, cutoff=None, repeat_window_days=20)
+    assert [(r[3]["date"], r[3]["status"], r[4]) for r in rows] == [
+        ("2026-07-31", "Acknowledge", 1), ("2026-09-24", "Reject", 1),
+        ("2026-10-07", "Acknowledge", 2), ("2026-10-28", "Reject", 2),
+    ]
+
+
 def test_a_second_attempt_is_a_second_application_in_the_report():
     """End to end, through select_rows: two entries, each with one receipt."""
     store = {
@@ -943,6 +1019,55 @@ def test_a_longer_title_is_not_the_same_role_when_a_word_only_starts_the_same():
     """position_key squashes to letters, which makes "Data Engineer" a prefix
     of "Data Engineering Manager". Those are two jobs."""
     assert rules.fold_position_keys(["Data Engineer", "Data Engineering Manager"]) == {}
+
+
+def test_a_title_the_reader_typed_never_folds_into_a_longer_one():
+    """Two live Microsoft requisitions. The reader had opened the October
+    application and named the role himself; folding his title into September's
+    longer one filed his two October mails under the wrong job - and, because
+    the two then shared a group, the attempt rule swallowed them whole."""
+    assert rules.fold_position_keys(
+        ["Senior Software Engineer", "Senior Software Engineer - Data Integration"],
+        typed=["Senior Software Engineer"]) == {}
+    # Without the correction it is one role, which is what makes the shorter
+    # title's provenance the whole of the difference.
+    assert rules.fold_position_keys(
+        ["Senior Software Engineer", "Senior Software Engineer - Data Integration"]) != {}
+
+
+def test_a_typed_title_still_collects_the_longer_spellings_of_itself():
+    """Protection is one-way. The reader's title does not fold away, but
+    nothing stops a title nobody typed from folding into it."""
+    assert rules.fold_position_keys(
+        ["Staff Engineer", "Staff Engineer - Payments"],
+        typed=["Staff Engineer - Payments"]) == {
+            rules.position_key("Staff Engineer"):
+                rules.position_key("Staff Engineer - Payments")}
+
+
+def test_two_requisitions_at_one_employer_stay_two_applications():
+    """End to end, the shape that was reported: four mails, two applications,
+    each keeping its own name."""
+    def row(id_, position, status, date, source):
+        r = _role(id_, position, status, date)
+        r["position_source"] = source
+        return r
+
+    store = {
+        "a": row("a", "Senior Software Engineer - Data Integration", "Acknowledge",
+                 "2026-07-31", "agent"),
+        "b": row("b", "Senior Software Engineer - Data Integration", "Reject",
+                 "2026-09-24", "agent"),
+        "c": row("c", "Senior Software Engineer", "Acknowledge", "2026-10-07", "user"),
+        "d": row("d", "Senior Software Engineer", "Reject", "2026-10-28", "agent"),
+    }
+    rows = report.select_rows(store, None, 20)
+    assert [(r[2], r[3]["date"]) for r in rows] == [
+        ("Senior Software Engineer", "2026-10-07"),
+        ("Senior Software Engineer", "2026-10-28"),
+        ("Senior Software Engineer - Data Integration", "2026-07-31"),
+        ("Senior Software Engineer - Data Integration", "2026-09-24"),
+    ]
 
 
 def test_a_requisition_id_is_never_the_best_name_for_a_role():

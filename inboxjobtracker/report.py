@@ -197,12 +197,17 @@ def folds_by_company(store, canon, by_domain):
     disagree about which rows are one application.
     """
     titles = {}
+    typed = {}
     for row in store.values():
         position = row.get("position")
         if not position:
             continue
-        titles.setdefault(name_key(resolve_company(row, canon, by_domain)), set()).add(position)
-    return {company: fold_position_keys(seen) for company, seen in titles.items()}
+        company = name_key(resolve_company(row, canon, by_domain))
+        titles.setdefault(company, set()).add(position)
+        if row.get("position_source") == "user":
+            typed.setdefault(company, set()).add(position)
+    return {company: fold_position_keys(seen, typed.get(company, ()))
+            for company, seen in titles.items()}
 
 
 def folded_key(company_key, position, folds):
@@ -258,33 +263,51 @@ def attempts(mails, window_days):
 
     Takes the mails of a single employer + role in the order they arrived and
     returns a 1-based attempt number for each. A mail starts a new attempt when
-    all three hold:
+    it is an acknowledgement, the attempt it would leave already has one, and
+    either of two things is true of that attempt.
 
-    - it is an acknowledgement. An application begins with a receipt and
-      nothing else does; without this clause a rejection arriving two months
-      after the receipt — ordinary employer behaviour — became an attempt of
-      its own containing nothing but a rejection.
+    An acknowledgement is the only mail that can start an attempt: an
+    application begins with a receipt and nothing else does. Without that
+    clause a rejection arriving two months after the receipt — ordinary
+    employer behaviour — became an attempt of its own containing nothing but a
+    rejection. And the attempt being left must already hold a receipt, because
+    one receipt resent is still one application; the stage-level collapse in
+    `select_rows` is what handles that.
+
+    What makes it a *new* attempt is one of:
+
+    - the attempt already ended. A rejection closes it, and nobody is sent a
+      receipt for an application that has already been refused, so a later
+      acknowledgement is a fresh application whatever the interval. No window
+      is consulted. This clause is what was missing: a real mailbox had
+      Microsoft reject one requisition on the 24th and acknowledge the next
+      on the 7th of the following month, thirteen days later, and the second
+      application — both its mails — was read as the first one's receipt
+      arriving twice and vanished from the report entirely.
     - more than `window_days` have passed since the previous mail about this
       role, chained mail to mail rather than measured from the start, so an
       application whose stages are each three weeks apart stays one application
-      however long it runs.
-    - the attempt it would leave already has an acknowledgement. One receipt
-      resent is still one application, and the stage-level collapse in
-      `select_rows` is what handles that.
+      however long it runs. This is the open-ended case: nothing has closed the
+      attempt, and only the gap distinguishes a re-application from a receipt
+      mailed twice.
     """
     out = []
     attempt = 1
     previous = None
     has_receipt = False
+    has_ended = False
     for received, status in mails:
         when = _parse(received)
-        if (status == "Acknowledge" and has_receipt
-                and previous is not None and when is not None
-                and (when - previous).total_seconds() > window_days * 86400):
+        stale = (previous is not None and when is not None
+                 and (when - previous).total_seconds() > window_days * 86400)
+        if status == "Acknowledge" and has_receipt and (has_ended or stale):
             attempt += 1
             has_receipt = False
+            has_ended = False
         if status == "Acknowledge":
             has_receipt = True
+        if status == REJECT:
+            has_ended = True
         # An unparseable date cannot start an attempt, but it is still part of
         # the one it landed in.
         if when is not None:
