@@ -31,13 +31,33 @@ UNCLEAR = "Unclear"
 INTERVIEW = "Invite to interview"
 INTERVIEW_ROUNDS = ["Invite to first interview", "Invite to second interview",
                     "Invite to third interview"]
+# The one outcome the rules never claim.
+#
+# Not because an offer is hard to word - "we are delighted to offer you the
+# position" is about as plain as mail gets - but because the cost of being
+# wrong is asymmetric in a way no other status is. A rejection filed as a
+# receipt is a nuisance; an offer invented out of "we offer competitive
+# benefits" is cruel. So nothing here ever sets it: it arrives in the store
+# only because the reader set it by hand in the iOS app, which shares this
+# store format.
+#
+# It still has to reach the report. It did not, and an application that got
+# as far as an offer lost that row from applications.csv - the best news in
+# the file, silently absent. Classifying it and reporting it are two
+# different questions, and this answers only the second.
+OFFER = "Offer"
 # Statuses that reach the CSV. Unclear (job alerts, newsletters, cold pitches)
 # never does.
-CSV_STATUSES = frozenset([REJECT, ACK, TEST] + INTERVIEW_ROUNDS)
+CSV_STATUSES = frozenset([REJECT, ACK, TEST, OFFER] + INTERVIEW_ROUNDS)
 # The order an application moves through. Used to sort same-day stages sensibly
 # and to flag a history that runs backwards.
+#
+# An offer outranks a rejection rather than preceding it: where both exist,
+# what the application *reached* is the offer. The rejection in that pair is
+# almost always a second requisition closing, and an application that ended in
+# an offer should not be reported as a history running backwards.
 STAGE_ORDER = {ACK: 0, TEST: 1, INTERVIEW_ROUNDS[0]: 2, INTERVIEW_ROUNDS[1]: 3,
-               INTERVIEW_ROUNDS[2]: 4, REJECT: 5}
+               INTERVIEW_ROUNDS[2]: 4, REJECT: 5, OFFER: 6}
 # Superseded spellings, mapped on load so an existing store keeps working.
 LEGACY_STATUS = {"Pass to next round": INTERVIEW, "Acknowledgement": ACK}
 

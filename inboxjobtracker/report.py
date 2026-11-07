@@ -14,7 +14,7 @@ import sys
 from .rules import (ACK, ATS_DOMAINS, backfill_positions, fold_position_keys, name_key,
                     unknown_labels,
                     position_key, position_words, CSV_STATUSES, INTERVIEW, INTERVIEW_ROUNDS,
-                    REJECT, STAGE_ORDER, SUBDOMAIN_NOISE)
+                    OFFER, REJECT, STAGE_ORDER, SUBDOMAIN_NOISE)
 
 
 # "user" is a correction someone typed. Nothing derived outranks it, and the
@@ -276,8 +276,8 @@ def attempts(mails, window_days):
 
     What makes it a *new* attempt is one of:
 
-    - the attempt already ended. A rejection closes it, and nobody is sent a
-      receipt for an application that has already been refused, so a later
+    - the attempt already ended. A rejection closes it, an offer closes it,
+      and nobody is sent a receipt for an application already decided, so a later
       acknowledgement is a fresh application whatever the interval. No window
       is consulted. This clause is what was missing: a real mailbox had
       Microsoft reject one requisition on the 24th and acknowledge the next
@@ -306,7 +306,7 @@ def attempts(mails, window_days):
             has_ended = False
         if status == "Acknowledge":
             has_receipt = True
-        if status == REJECT:
+        if status in (REJECT, OFFER):
             has_ended = True
         # An unparseable date cannot start an attempt, but it is still part of
         # the one it landed in.

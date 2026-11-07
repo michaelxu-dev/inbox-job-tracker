@@ -1021,6 +1021,67 @@ def test_a_longer_title_is_not_the_same_role_when_a_word_only_starts_the_same():
     assert rules.fold_position_keys(["Data Engineer", "Data Engineering Manager"]) == {}
 
 
+# --- An offer reaches the report ---------------------------------------------
+#
+# Nothing here classifies an offer: the cost of inventing one out of "we offer
+# competitive benefits" is not symmetrical with the cost of missing one. But
+# the reader can set it by hand in the iOS app, which shares this store, and
+# `CSV_STATUSES` did not list it - so an application that got as far as an
+# offer lost that row from applications.csv. The best news in the file, gone
+# without a word. Classifying it and reporting it are different questions.
+
+def _offer_store():
+    def row(id_, status, date):
+        return {"id": id_, "status": status, "date": date,
+                "received": date + "T09:00:00Z", "company": "Contoso",
+                "company_source": "user", "position": "Senior Engineer",
+                "position_source": "user", "from_address": "careers@contoso.com",
+                "subject": "About your application",
+                "scores": {"reject": 0, "next": 0}, "explicit_round": None}
+    return {"a": row("a", "Acknowledge", "2026-08-01"),
+            "b": row("b", "Offer", "2026-09-01")}
+
+
+def test_an_offer_reaches_the_report():
+    rows = report.select_rows(_offer_store(), None, 20)
+    assert [(r[3]["date"], r[3]["status"]) for r in rows] == [
+        ("2026-08-01", "Acknowledge"), ("2026-09-01", "Offer")]
+
+
+def test_an_offer_is_the_last_stage_not_a_history_running_backwards():
+    """An application filed against two requisitions collects a rejection from
+    one of them. Ordering the offer before the rejection would report that
+    pair as a timeline that runs backwards."""
+    store = _offer_store()
+    store["c"] = dict(store["b"], id="c", status="Reject", date="2026-09-01",
+                      received="2026-09-01T10:00:00Z")
+    rows = report.select_rows(store, None, 20)
+    assert [r[3]["status"] for r in rows] == ["Acknowledge", "Reject", "Offer"]
+    # And it is not reported as a history running backwards.
+    import io
+    import contextlib
+    err = io.StringIO()
+    with contextlib.redirect_stderr(err):
+        report.warn_out_of_sequence(rows)
+    assert err.getvalue() == ""
+
+
+def test_nothing_classifies_an_offer():
+    """The rules must never claim one. If this fails, a rule has learned to
+    say "Offer" and the reason the status exists has been undone."""
+    assert rules.OFFER not in {
+        status for rule in (rules.REJECT_RULES + rules.TEST_RULES + rules.ACK_RULES)
+        for status in (rule if isinstance(rule, str) else ())}
+
+
+def test_a_receipt_after_an_offer_is_a_new_attempt():
+    """Nobody is sent a receipt for the job they have just been offered."""
+    mails = [_mail("Acknowledge", "2026-07-31"), _mail("Offer", "2026-09-24"),
+             _mail("Acknowledge", "2026-10-07")]
+    got = report.attempts([(m["received"], m["status"]) for m in mails], 20)
+    assert got == [1, 1, 2]
+
+
 def test_a_title_the_reader_typed_never_folds_into_a_longer_one():
     """Two live Microsoft requisitions. The reader had opened the October
     application and named the role himself; folding his title into September's
