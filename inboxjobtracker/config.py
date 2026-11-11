@@ -33,7 +33,7 @@ DEFAULTS = {
     # share the uncertain items fill the batch every run and nothing confident
     # is ever checked - which is the half where the costly mistakes live.
     "audit_share": 0.25,
-    "interview_round_gap_days": 10,
+    "interview_round_gap_days": 4,
     # How many days apart two receipts for one role must be before they count
     # as two applications rather than one receipt mailed twice. See
     # report.attempts.

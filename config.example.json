@@ -10,7 +10,7 @@
   "judge_model": "claude-haiku-4-5-20251001",
 
   "review_batch_size": 40,
-  "interview_round_gap_days": 10,
+  "interview_round_gap_days": 4,
   "repeat_window_days": 20,
 
   "default_account": "gmail",

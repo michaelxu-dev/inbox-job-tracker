@@ -11,7 +11,8 @@ import json
 import re
 import sys
 
-from .rules import (ACK, ATS_DOMAINS, backfill_positions, fold_position_keys, name_key,
+from .rules import (ACK, ATS_DOMAINS, backfill_positions, fold_position_keys, live_positions,
+                    name_key,
                     unknown_labels,
                     position_key, position_words, CSV_STATUSES, INTERVIEW, INTERVIEW_ROUNDS,
                     OFFER, REJECT, STAGE_ORDER, SUBDOMAIN_NOISE)
@@ -52,29 +53,106 @@ SCHEDULING_PREFIX = re.compile(
     r"cancell?ed|rescheduled|reminder)\s*:\s*)+", re.I)
 
 
+# A calendar client saying this interview moved. "Updated invitation" and
+# "Canceled event" are Google Calendar's own words for a change to an event
+# that already exists, so whatever else is true, they are not a new round -
+# and the gap cannot tell the difference. Super.com cancelled an interview on
+# the 25th and sent the new time on the 28th, four days after the invitation
+# it replaced; counted by the gap alone that was a second interview, for an
+# application that only ever had one and was turned down three days later.
+#
+# A plain "Invitation:" is deliberately absent. That is a new event.
+RESCHEDULED_EVENT = re.compile(
+    r"^\s*(updated invitation|re-?scheduled|cancell?ed event)\s*:", re.I)
+
+
 def thread_key(subject):
     text = SCHEDULING_PREFIX.sub("", subject or "")
     text = re.sub(r"\s*@.*$", "", text)      # calendar tail: "@ Mon Aug 17, 2026"
     return re.sub(r"[^a-z0-9]", "", text.casefold())
 
 
-def assign_interview_rounds(store, gap_days=10):
+def resolved_roles(store):
+    """Which application each message belongs to: {id: (company, role)}.
+
+    One place decides it, because two had been deciding it differently.
+    `select_rows` resolved the employer, backfilled a missing title, folded the
+    spellings and numbered what was left over; `assign_interview_rounds`
+    grouped on the raw `company` and `position` straight off the row. So a
+    scheduling mail that named no role was its own group when the rounds were
+    counted - it could never be anything but a first interview - and then
+    joined the real application a step later, where it was swallowed by the
+    first-round row already there.
+
+    On a real mailbox that was four Asana entries, "Unknown-1" through
+    "Unknown-4", all four labelled a first interview, and the genuine second
+    round nowhere on screen. It came right only because one mail of the five
+    happened to carry the title; with none of them, the second round could not
+    have been found at all.
+    """
+    canon = canonical_names(store)
+    by_domain = canonical_by_domain(store)
+    def company_of(row):
+        return resolve_company(row, canon, by_domain)
+
+    fallback = backfill_positions(store, company_of)
+    live = live_positions(store, company_of)
+    unknowns = unknown_labels(store, company_of)
+    folds = folds_by_company(store, canon, by_domain)
+    canon_position = canonical_positions(store, canon, by_domain, folds)
+
+    # Keyed by the store's own key rather than by row["id"]: the two are the
+    # same in a real store, and a row assembled without one still has to be
+    # placed somewhere.
+    resolved = {}
+    for ident, row in store.items():
+        name = company_of(row)
+        key = name_key(name)
+        # In order of how much the mail supports it: a title of its own; the
+        # employer's only title ever; the employer's only title still open,
+        # which a receipt may not have because a receipt starts an application
+        # rather than continuing one; and failing all of those, a number, so
+        # that messages nothing can place do not merge into one another.
+        #
+        # Presentation only - the store keeps a real null, so a later run can
+        # still fill in a title once one turns up in other mail.
+        position = (row.get("position")
+                    or fallback.get(key)
+                    or (None if row.get("status") == ACK else live.get(key))
+                    or unknowns.get(row.get("id") or ident) or "Unknown")
+        position = canon_position.get((key, folded_key(key, position, folds)), position)
+        resolved[ident] = (name, position)
+    return resolved
+
+
+def assign_interview_rounds(store, gap_days=4):
     """Turn the generic INTERVIEW marker into first/second/third.
 
     A round is an interview, not an email. Arranging one takes several mails —
     a request for availability, a calendar invitation, sometimes a reschedule —
     and counting those as separate rounds invents interviews that never
     happened. Mails belong to the round already under way when they share the
-    day, continue its subject thread, or land within `gap_days` of its start;
-    a genuine next round follows the interview itself, so it sits further out.
-    Wording that states a round outright always wins and resets the count.
+    day, continue its subject thread, say outright that they are this
+    interview moved, or land within `gap_days` of its start; a genuine next
+    round follows the interview itself, so it sits further out. Wording that
+    states a round outright always wins and resets the count.
+
+    **Why four days and not ten.** Ten was a guess, and too long for anyone
+    whose process moves at all: Asana invited a candidate to a phone screen on
+    the 4th, held it on the 9th and invited him to meet the hiring manager the
+    same afternoon, and ten days read those two rounds as one - so the second
+    interview was nowhere in the report. Xero's recruiter screen and its
+    technical interview, nine days apart, went the same way. On a 450-mail
+    mailbox the answer is identical for every value from four down to two,
+    which is the part worth trusting; four is the largest of those, so it
+    splits a round as rarely as any value that still works.
     """
+    roles = resolved_roles(store)
     groups = {}
-    for row in store.values():
+    for ident, row in store.items():
         if row["status"] == INTERVIEW or row["status"] in INTERVIEW_ROUNDS:
-            key = (name_key(row.get("company") or "?"),
-                   position_key(row.get("position") or ""))
-            groups.setdefault(key, []).append(row)
+            name, position = roles[ident]
+            groups.setdefault((name_key(name), position_key(position)), []).append(row)
 
     for rows in groups.values():
         rows.sort(key=lambda r: r["received"])
@@ -100,6 +178,8 @@ def assign_interview_rounds(store, gap_days=10):
                 round_start = date
             elif key and key in threads:
                 count = threads[key]                       # same conversation
+            elif RESCHEDULED_EVENT.match(row.get("subject") or ""):
+                pass                                       # this one, moved
             elif round_start is not None and (date - round_start).days <= gap_days:
                 pass                                       # still arranging this one
             else:
@@ -355,25 +435,18 @@ def select_rows(store, cutoff=None, repeat_window_days=DEFAULT_REPEAT_WINDOW_DAY
     application to the same role. See `attempts`."""
     canon = canonical_names(store)
     by_domain = canonical_by_domain(store)
-    fallback = backfill_positions(store, lambda row: resolve_company(row, canon, by_domain))
-    unknowns = unknown_labels(store, lambda row: resolve_company(row, canon, by_domain))
     folds = folds_by_company(store, canon, by_domain)
-    canon_position = canonical_positions(store, canon, by_domain, folds)
+    roles = resolved_roles(store)
 
     by_role = {}
-    for row in sorted(store.values(), key=lambda r: (r["received"], r.get("id") or "")):
+    for ident, row in sorted(store.items(),
+                             key=lambda kv: (kv[1]["received"], kv[1].get("id") or kv[0])):
         if row["status"] not in CSV_STATUSES:
             continue
         if cutoff and row["date"] < cutoff:
             continue
-        name = resolve_company(row, canon, by_domain)
-        # Presentation only — the store keeps a real null so a later run can
-        # still backfill a title once one turns up in other mail.
-        position = (row.get("position") or fallback.get(name_key(name))
-                    or unknowns.get(row["id"]) or "Unknown")
+        name, position = roles[ident]
         company_key = name_key(name)
-        position = canon_position.get(
-            (company_key, folded_key(company_key, position, folds)), position)
         # Sorted by arrival above, so each list is already in the order
         # `attempts` needs to read it.
         by_role.setdefault(

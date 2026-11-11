@@ -960,6 +960,53 @@ def backfill_positions(store, company_of=None):
     return titles
 
 
+def live_positions(store, company_of=None):
+    """The one role an employer still has open, where they have exactly one.
+
+    Same shape as `backfill_positions` and the same purpose - a title for mail
+    that names none - but it counts only the roles that have **not** been
+    turned down, and it is offered only to mail that continues an application
+    rather than starting one.
+
+    **Why both exist.** `backfill_positions` refuses to choose where an
+    employer has two titles, and it is right to: two is a coin toss. But a
+    title that has already been rejected is not a candidate for a message
+    arriving afterwards, and ignoring that threw away the answer in the one
+    case where it was certain. Asana turned down the Software Engineer
+    application in October and interviewed for Threat Response in November;
+    four scheduling mails in November named no role, and each became an
+    application of its own called "Unknown-1" through "Unknown-4", every one
+    of them labelled a first interview. The reader could see at a glance which
+    role they were about, because only one was still open.
+
+    **Why a receipt is excluded at the call site.** An acknowledgement begins
+    an application and nothing else does, so an untitled one may be a *new*
+    application at that employer rather than a continuation of the open one.
+    Attaching it would merge a job search's newest application into its oldest.
+
+    One still-open title is an inference the mail supports. None, or two, and
+    `unknown_labels` is how those messages reach a person instead.
+    """
+    company_of = company_of or (lambda row: row.get("company"))
+    live, rejected, spelling = {}, {}, {}
+    for row in sorted(store.values(), key=lambda r: (r.get("received") or "", r.get("id") or "")):
+        name, position = company_of(row), row.get("position")
+        if not position or not name or row.get("status") not in CSV_STATUSES:
+            continue
+        key, role = name_key(name), position_key(position)
+        live.setdefault(key, set()).add(role)
+        spelling.setdefault((key, role), position)
+        if row["status"] == REJECT:
+            rejected.setdefault(key, set()).add(role)
+
+    titles = {}
+    for key, roles in live.items():
+        open_roles = roles - rejected.get(key, set())
+        if len(open_roles) == 1:
+            titles[key] = spelling[(key, open_roles.pop())]
+    return titles
+
+
 def unknown_labels(store, company_of=None):
     """Names for the messages whose role cannot be inferred.
 

@@ -1021,6 +1021,175 @@ def test_a_longer_title_is_not_the_same_role_when_a_word_only_starts_the_same():
     assert rules.fold_position_keys(["Data Engineer", "Data Engineering Manager"]) == {}
 
 
+# --- The one role still open names the mail that names none ----------------
+#
+# Reported from a phone, with the list open on four Asana entries called
+# "Unknown-1" through "Unknown-4", every one of them labelled a first
+# interview. Asana turned down the Software Engineer application in October
+# and interviewed for Threat Response in November; the four November mails
+# were a hiring-manager invitation and the logistics around it, and none of
+# them named a role. `backfill_positions` refuses where an employer has two
+# titles - rightly, two is a coin toss - but one of these two had been
+# rejected, and the reader could see at a glance which role the mail was
+# about.
+
+def _asana(id_, status, date, position=None, subject=None):
+    # A subject per message, because mails sharing a thread deliberately stay
+    # in one round - give them all the same one and the gap is never consulted.
+    return {"id": id_, "status": status, "date": date,
+            "received": date + "T10:00:00Z", "company": "Asana",
+            "company_source": "agent", "position": position,
+            "position_source": "agent" if position else "rule",
+            "from_address": "careers@asana.com", "from_name": "Asana",
+            "subject": subject or ("About your application " + id_),
+            "scores": {"reject": 0, "next": 0}, "explicit_round": None}
+
+
+def _live(store):
+    return rules.live_positions(store, lambda row: row.get("company"))
+
+
+def test_the_only_role_still_open_is_offered():
+    store = {
+        "a": _asana("a", "Acknowledge", "2026-08-01", "Software Engineer"),
+        "b": _asana("b", "Reject", "2026-10-23", "Software Engineer"),
+        "c": _asana("c", "Acknowledge", "2026-11-02", "Senior Security Engineer"),
+    }
+    assert _live(store) == {"asana": "Senior Security Engineer"}
+
+
+def test_two_roles_still_open_is_still_a_coin_toss():
+    store = {
+        "a": _asana("a", "Acknowledge", "2026-08-01", "Software Engineer"),
+        "c": _asana("c", "Acknowledge", "2026-11-02", "Senior Security Engineer"),
+    }
+    assert _live(store) == {}
+
+
+def test_every_role_turned_down_offers_nothing():
+    """Nothing is open, so nothing is inferable - and a mail arriving after
+    the last rejection is more likely to be a new application than a
+    continuation of a finished one."""
+    store = {
+        "a": _asana("a", "Acknowledge", "2026-08-01", "Software Engineer"),
+        "b": _asana("b", "Reject", "2026-10-23", "Software Engineer"),
+    }
+    assert _live(store) == {}
+
+
+def test_the_untitled_scheduling_mail_joins_the_open_application():
+    """End to end: four entries called Unknown become stages of the one
+    application they were always about."""
+    store = {
+        "a": _asana("a", "Acknowledge", "2026-08-01", "Software Engineer"),
+        "b": _asana("b", "Reject", "2026-10-23", "Software Engineer"),
+        "c": _asana("c", "Acknowledge", "2026-11-02", "Senior Security Engineer"),
+        "d": _asana("d", "Invite to interview", "2026-11-04", "Senior Security Engineer"),
+        "e": _asana("e", "Invite to interview", "2026-11-09",
+                    subject="Asana Next Steps: Hiring Manager Meeting"),
+        # The logistics around the same meeting, in its thread, so it is that
+        # round and not another one.
+        "f": _asana("f", "Invite to interview", "2026-11-09",
+                    subject="Re: Asana Next Steps: Hiring Manager Meeting"),
+    }
+    report.assign_interview_rounds(store, 3)
+    rows = report.select_rows(store, None, 20)
+    assert [(r[2], r[3]["date"], r[3]["status"]) for r in rows] == [
+        ("Senior Security Engineer", "2026-11-02", "Acknowledge"),
+        ("Senior Security Engineer", "2026-11-04", "Invite to first interview"),
+        ("Senior Security Engineer", "2026-11-09", "Invite to second interview"),
+        ("Software Engineer", "2026-08-01", "Acknowledge"),
+        ("Software Engineer", "2026-10-23", "Reject"),
+    ]
+    assert not any("Unknown" in r[2] for r in rows)
+
+
+def test_an_untitled_receipt_does_not_join_the_open_application():
+    """A receipt begins an application and nothing else does, so an untitled
+    one may be a third application at that employer rather than a stage of the
+    open one. Attaching it would merge the newest into the oldest."""
+    store = {
+        "a": _asana("a", "Acknowledge", "2026-08-01", "Software Engineer"),
+        "b": _asana("b", "Reject", "2026-10-23", "Software Engineer"),
+        "c": _asana("c", "Acknowledge", "2026-11-02", "Senior Security Engineer"),
+        "d": _asana("d", "Acknowledge", "2026-11-09"),
+    }
+    rows = report.select_rows(store, None, 20)
+    assert ("Unknown", "2026-11-09") in [(r[2], r[3]["date"]) for r in rows]
+
+
+def test_one_title_ever_still_wins_even_once_rejected():
+    """`backfill_positions` is consulted first and is unchanged, so nothing
+    that used to be filled in stops being filled in."""
+    store = {
+        "a": _asana("a", "Acknowledge", "2026-08-01", "Software Engineer"),
+        "b": _asana("b", "Reject", "2026-10-23", "Software Engineer"),
+        "c": _asana("c", "Invite to interview", "2026-11-09"),
+    }
+    rows = report.select_rows(store, None, 20)
+    assert all(r[2] == "Software Engineer" for r in rows)
+
+
+def test_a_rescheduled_interview_is_not_another_interview():
+    """Super.com cancelled an interview on the 25th and sent the new time on
+    the 28th, four days after the invitation it replaced. Counted by the gap
+    alone that was a second interview, for an application that only ever had
+    one and was turned down three days later. The calendar says so itself."""
+    store = {
+        "a": _asana("a", "Invite to interview", "2026-09-24", "Security Engineer",
+                    subject="Next steps with Asana - Security Engineer"),
+        # Further out than the gap, so only the calendar's own word for it can
+        # keep this in the round it belongs to.
+        "b": _asana("b", "Invite to interview", "2026-10-06", "Security Engineer",
+                    subject="Updated invitation: Interview with Asana @ Thu Oct 8, 2026"),
+    }
+    report.assign_interview_rounds(store, 4)
+    assert [store[k]["status"] for k in "ab"] == ["Invite to first interview"] * 2
+
+
+def test_a_fresh_calendar_invitation_can_still_be_a_new_round():
+    """"Invitation:" is a new event; only an *updated* one is the same event
+    moved. Reading both the same way would merge two real rounds."""
+    store = {
+        "a": _asana("a", "Invite to interview", "2026-09-24", "Security Engineer",
+                    subject="Next steps with Asana - Security Engineer"),
+        "b": _asana("b", "Invite to interview", "2026-10-20", "Security Engineer",
+                    subject="Invitation: Interview with Asana @ Thu Oct 22, 2026"),
+    }
+    report.assign_interview_rounds(store, 4)
+    assert [store[k]["status"] for k in "ab"] == [
+        "Invite to first interview", "Invite to second interview"]
+
+
+def test_a_rescheduled_interview_with_nothing_before_it_is_the_first():
+    """The clause says "not a new round", which must not mean "round zero"."""
+    store = {
+        "a": _asana("a", "Invite to interview", "2026-09-28", "Security Engineer",
+                    subject="Updated invitation: Interview with Asana @ Thu Oct 1, 2026"),
+    }
+    report.assign_interview_rounds(store, 4)
+    assert store["a"]["status"] == "Invite to first interview"
+
+
+def test_the_rounds_and_the_rows_agree_on_which_application_a_mail_is_in():
+    """They did not. `assign_interview_rounds` grouped on the raw company and
+    position; `select_rows` resolved them. A mail that named no role was its
+    own group when the rounds were counted, so it could only ever be a first
+    interview, and it then joined the real application a step later and was
+    swallowed by the first-round row already there."""
+    store = {
+        "a": _asana("a", "Acknowledge", "2026-11-02", "Security Engineer"),
+        "b": _asana("b", "Invite to interview", "2026-11-04", "Security Engineer"),
+        "c": _asana("c", "Invite to interview", "2026-11-09",
+                    subject="Asana Next Steps: Hiring Manager Meeting"),
+    }
+    roles = report.resolved_roles(store)
+    assert {ident: role for ident, (_, role) in roles.items()} == {
+        "a": "Security Engineer", "b": "Security Engineer", "c": "Security Engineer"}
+    report.assign_interview_rounds(store, 4)
+    assert store["c"]["status"] == "Invite to second interview"
+
+
 # --- An offer reaches the report ---------------------------------------------
 #
 # Nothing here classifies an offer: the cost of inventing one out of "we offer
