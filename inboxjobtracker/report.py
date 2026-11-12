@@ -14,7 +14,7 @@ import sys
 from .rules import (ACK, ATS_DOMAINS, backfill_positions, fold_position_keys, live_positions,
                     name_key,
                     unknown_labels,
-                    position_key, position_words, CSV_STATUSES, INTERVIEW, INTERVIEW_ROUNDS,
+                    position_key, position_words, CSV_STATUSES, INTERVIEW, INTERVIEW_ROUNDS, TEST,
                     OFFER, REJECT, STAGE_ORDER, SUBDOMAIN_NOISE)
 
 
@@ -148,13 +148,19 @@ def assign_interview_rounds(store, gap_days=4):
     splits a round as rarely as any value that still works.
     """
     roles = resolved_roles(store)
-    groups = {}
+    groups, assessed = {}, {}
     for ident, row in store.items():
+        name, position = roles[ident]
+        key = (name_key(name), position_key(position))
         if row["status"] == INTERVIEW or row["status"] in INTERVIEW_ROUNDS:
-            name, position = roles[ident]
-            groups.setdefault((name_key(name), position_key(position)), []).append(row)
+            groups.setdefault(key, []).append(row)
+        elif row["status"] == TEST:
+            # An assessment is an interview for counting purposes - somebody
+            # sits it, and nobody sits two in a day.
+            assessed.setdefault(key, set()).add(row["date"])
 
-    for rows in groups.values():
+    for key, rows in groups.items():
+        assessment_days = assessed.get(key, set())
         rows.sort(key=lambda r: r["received"])
         count, round_start, threads = 0, None, {}
         for row in rows:
@@ -180,6 +186,17 @@ def assign_interview_rounds(store, gap_days=4):
                 count = threads[key]                       # same conversation
             elif RESCHEDULED_EVENT.match(row.get("subject") or ""):
                 pass                                       # this one, moved
+            elif row["date"] in assessment_days:
+                # The assessment being booked, not a round beside it. Xero
+                # wrote "we'd like to progress you to the technical
+                # assessment" at 14:21 and Karat sent the scheduling link for
+                # it at 14:20, a minute earlier; nine days after the recruiter
+                # screen, the gap alone made the second of those a second
+                # interview sitting next to the assessment it was arranging.
+                # Keeping the count where it was lets the stage collapse take
+                # it, which is what a reader means by "that one is the same
+                # thing".
+                pass
             elif round_start is not None and (date - round_start).days <= gap_days:
                 pass                                       # still arranging this one
             else:

@@ -1147,6 +1147,46 @@ def test_a_rescheduled_interview_is_not_another_interview():
     assert [store[k]["status"] for k in "ab"] == ["Invite to first interview"] * 2
 
 
+def test_an_interview_booked_on_an_assessment_day_is_that_assessment():
+    """Reported from a phone. Xero wrote "we'd like to progress you to the
+    technical assessment" at 14:21 and Karat sent the link to book it at
+    14:20, a minute earlier. Nine days after the recruiter screen, the gap
+    made the second of those a second interview sitting beside the assessment
+    it was arranging. Nobody sits two interviews in a day."""
+    store = {
+        "a": _asana("a", "Invite to interview", "2026-10-07", "Security Engineer",
+                    subject="Book your Talent team screen with Asana"),
+        "b": _asana("b", "Invite to interview", "2026-10-16", "Security Engineer",
+                    subject="Schedule Your Asana Interview"),
+        "c": _asana("c", "Invite to test", "2026-10-16", "Security Engineer",
+                    subject="Next Steps! Let's Book Your Technical Interview"),
+    }
+    report.assign_interview_rounds(store, 4)
+    assert store["b"]["status"] == "Invite to first interview"
+    assert store["c"]["status"] == "Invite to test"
+    # And the stage collapse then keeps one row for that first interview.
+    rows = report.select_rows(store, None, 20)
+    assert [(r[3]["date"], r[3]["status"]) for r in rows] == [
+        ("2026-10-07", "Invite to first interview"),
+        ("2026-10-16", "Invite to test"),
+    ]
+
+
+def test_an_assessment_on_another_day_does_not_absorb_an_interview():
+    """The rule is "the same day", not "anywhere in the history". An
+    assessment in October cannot explain away an interview in November."""
+    store = {
+        "a": _asana("a", "Invite to interview", "2026-10-07", "Security Engineer",
+                    subject="Book your Talent team screen with Asana"),
+        "b": _asana("b", "Invite to test", "2026-10-16", "Security Engineer",
+                    subject="Next Steps! Let's Book Your Technical Interview"),
+        "c": _asana("c", "Invite to interview", "2026-11-09", "Security Engineer",
+                    subject="Asana Next Steps: Hiring Manager Meeting"),
+    }
+    report.assign_interview_rounds(store, 4)
+    assert store["c"]["status"] == "Invite to second interview"
+
+
 def test_a_fresh_calendar_invitation_can_still_be_a_new_round():
     """"Invitation:" is a new event; only an *updated* one is the same event
     moved. Reading both the same way would merge two real rounds."""
