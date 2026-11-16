@@ -81,7 +81,9 @@ and runs on any Python 3.10+.
 
 ## Prerequisites
 
-- **Python 3.10+**. Earlier versions (3.9) commonly have no prebuilt wheel for
+- **Python 3.10+**, which is also what `requires-python` says and what CI
+  tests; the two disagreed until 3.9 went end of life and the pin holding it
+  on an old runner image came due. Earlier versions (3.9) commonly have no prebuilt wheel for
   `cryptography` (a dependency of `msal`, used by the `graph` extra for Outlook /
   Microsoft 365), so `pip` falls back to compiling it from source with Rust — a build
   that needs `pkg-config` and an OpenSSL install it usually can't find on macOS, and

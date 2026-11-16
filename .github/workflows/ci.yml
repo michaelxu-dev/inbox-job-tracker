@@ -12,21 +12,13 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ["3.9", "3.12"]
-        # `ubuntu-latest` rolled on to 26.04, which has no 3.9 build in the
-        # setup-python manifest - 3.9 stops at 24.04 there, while 3.10 and
-        # above go all the way. So the floor is tested on the newest image
-        # that still has it, and everything else keeps following `latest`.
-        #
-        # The pin is the smaller half of the question. 3.9 reached end of life
-        # in October 2025 and `requires-python` still says `>=3.9`, so this
-        # runner will run out before the promise does.
-        exclude:
-          - os: ubuntu-latest
-            python-version: "3.9"
-        include:
-          - os: ubuntu-24.04
-            python-version: "3.9"
+        # The floor and something current. The floor was 3.9 and was pinned to
+        # ubuntu-24.04 for a fortnight, because `ubuntu-latest` had rolled on
+        # to 26.04 and setup-python has no 3.9 build for it - a pin that would
+        # have needed renewing at every image retirement, for a Python that
+        # went end of life in October 2025 and that the README had already
+        # stopped claiming.
+        python-version: ["3.10", "3.12"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

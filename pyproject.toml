@@ -3,7 +3,7 @@ name = "inbox-job-tracker"
 version = "0.1.0"
 description = "An AI agent that reads the job-application replies in your mailbox and writes the spreadsheet. Ships as a Claude Code skill and subagent."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [{ name = "Michael Xu" }]
 keywords = ["ai-agent", "claude", "claude-code", "llm", "job-search", "email",
