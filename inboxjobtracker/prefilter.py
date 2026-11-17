@@ -17,7 +17,21 @@ BODY_HINTS = re.compile(
     r"(thank you for (your interest|applying)|your application|applied (for|to)|"
     r"the (position|role) of|we regret|unfortunately|move forward|not selected|"
     r"schedule (a|an) (call|interview)|hiring team|talent acquisition|"
-    r"recruit(er|ing) team|other candidates)",
+    r"recruit(er|ing) team|other candidates|"
+    # A coordinator confirming a booked interview, which the rest of this
+    # pattern had no word for. "Asana Confirmation: (Michael Xu), Senior
+    # Security Engineer" was dropped with no reason at all: the subject says
+    # "confirmation" and not "interview", the sender is a named human at the
+    # employer's own domain, and the body opens "Thank you for sharing your
+    # availability" rather than "thank you for applying". Twelve other mails
+    # in that thread were kept, so the loss was invisible - and the reply to
+    # it survived on its own quoted text, which is how a thread ends up with
+    # its root missing.
+    #
+    # These two rather than "confirm\w*" in the subject, which was measured
+    # on 3000 real messages: the subject word costs twelve bank, government
+    # and newsletter mails to catch this one, and these cost none.
+    r"interviewers?\s*:|your availability)",
     re.I,
 )
 ADDRESS_HINTS = re.compile(r"(careers?|recruit\w*|talent|hr|jobs?|hiring|no-?reply)", re.I)
