@@ -60,9 +60,26 @@ the history is concerned, and two is worse than none: with one the other
 messages from that employer join it, with two nothing joins anything. Still
 null when the mail names neither a title nor a field.
 
+If the mail states when an interview or assessment will actually happen, give
+it in "appointment", copied character for character from the mail - "November
+26, 2026 at 10:00AM Mountain Time (UTC-7)". Never reworded, never converted to
+another time zone: it is shown to the reader exactly as you return it, beside
+the mail it came from.
+
+It must name a day AND a clock time, both. These mails are full of numbers
+that are neither, and every one of them would be wrong: "set aside at least 60
+minutes", "a maximum of 10 minutes until your interviewer joins", a
+requisition "ID: 10460889", a meeting id, a passcode, a phone number. A
+duration is not an appointment. If the mail does not state a day and a time
+for the meeting itself, "appointment" is null - that is the ordinary answer,
+and a wrong time is far worse than none, because the reader acts on it.
+
+Null too when the meeting is being arranged rather than booked ("pick a slot",
+"send us your availability"), and when the mail cancels one.
+
 Reply with JSON only: {"status": "...", "company": "...", "position": "...",
-"note": "one short line on why"}. Use null for company or position if the mail
-genuinely does not say.
+"appointment": "...", "note": "one short line on why"}. Use null for company,
+position or appointment if the mail genuinely does not say.
 
 Subject: %(subject)s
 From: %(from_name)s <%(from_address)s>
