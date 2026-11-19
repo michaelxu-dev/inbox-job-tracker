@@ -318,6 +318,34 @@ ATS_DOMAINS = {
     # agent, was displayed as GitLab's.
     "calendar.google.com",
 }
+
+# A calendar service writing on an employer's behalf, from a domain that is an
+# employer in its own right.
+#
+# ATS_DOMAINS carries calendar.google.com for exactly this hazard, and it did
+# not catch calendar-notification@google.com: the domain there is plain
+# google.com, which really is Google's recruiting domain. So a Xero interview
+# notice taught the domain map that google.com means Xero, and Google's own
+# "Thanks for applying" and online assessment were filed under Xero - reported
+# from a phone, on a Gmail mailbox, and the second time this fault has been
+# found with a different sender.
+#
+# Matched on the local part, because the domain cannot be blamed.
+CALENDAR_NOTICE_SENDERS = re.compile(r"^calendar-?notification(\+|@)", re.I)
+
+
+def names_no_employer(address, domain):
+    """Whether this sender can name the employer at all.
+
+    The three places that read a company out of a sender - naming one,
+    learning what a domain means, and applying what was learnt - have to
+    agree, or a sender rejected by one is still believed by another. They
+    disagreed once: calendar.google.com was blocked, calendar-notification@
+    google.com was not, and Google's own recruiting mail ended up under Xero.
+    """
+    if domain in ATS_DOMAINS or any(domain.endswith("." + d) for d in ATS_DOMAINS):
+        return True
+    return bool(CALENDAR_NOTICE_SENDERS.search((address or "").lower()))
 SUBDOMAIN_NOISE = re.compile(
     r"^(e?mail|mailer|smtp|mx|notification|notifications|notify|reply|no-?reply|"
     r"careers?|jobs?|recruiting|talent|hr|apply|hire|hiring|info|em|mkt|marketing|"
@@ -649,7 +677,7 @@ def company_from_domain(address):
         return None
     domain = address.split("@")[-1].lower().strip(">.")
     domain = SUBDOMAIN_NOISE.sub("", domain)
-    if domain in ATS_DOMAINS or any(domain.endswith("." + d) for d in ATS_DOMAINS):
+    if names_no_employer(address, domain):
         return None
     parts = domain.split(".")
     if len(parts) < 2:

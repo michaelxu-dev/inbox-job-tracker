@@ -12,6 +12,7 @@ import re
 import sys
 
 from .rules import (ACK, ATS_DOMAINS, backfill_positions, fold_position_keys, live_positions,
+                    names_no_employer,
                     name_key,
                     unknown_labels,
                     position_key, position_words, CSV_STATUSES, INTERVIEW, INTERVIEW_ROUNDS, TEST,
@@ -232,7 +233,7 @@ def canonical_by_domain(store):
         if not name or "@" not in address or row.get("company_source") == "user":
             continue
         domain = SUBDOMAIN_NOISE.sub("", address.split("@")[-1])
-        if domain in ATS_DOMAINS or any(domain.endswith("." + d) for d in ATS_DOMAINS):
+        if names_no_employer(address, domain):
             continue
         rank = spelling_rank(row)
         if domain not in best or rank < best[domain][0]:
@@ -272,10 +273,16 @@ def resolve_company(row, canon, by_domain):
     # overruled, and letting the domain overrule them back discards the
     # correction entirely - which it did, silently, the first time this tried
     # to stop a correction spreading.
-    if row.get("company_source") != "user":
+    if row.get("company_source") != "user" and not names_no_employer(address, domain):
         # The domain's name still goes through the spelling fold:
         # thalesgroup.com yields "Thalesgroup", which is the same employer as a
         # Workday mail's "Thales".
+        #
+        # A sender that cannot name an employer cannot be renamed by one
+        # either. The Xero interview notice arrives from
+        # calendar-notification@google.com, and google.com legitimately maps to
+        # Google - so without that clause the notice stops teaching the map the
+        # wrong thing and is immediately renamed by the right thing.
         name = by_domain.get(domain) or name
     return canon.get(name_key(name), name)
 
