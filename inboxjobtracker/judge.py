@@ -50,6 +50,16 @@ The rules already extracted a position ("%(rule_position)s") from the subject or
 body. Leave "position" null unless that one is wrong or missing - do not replace
 a correct title with a differently phrased one.
 
+Where the mail names no job title but does name the kind of work - "your
+application for our software engineering roles", "the data science positions" -
+give that, reduced to the discipline alone: "Software Engineering", "Data
+Science". Drop "our", "the", "roles", "positions", "team" and any plural. Write
+it the same way every time, because an employer whose mail is split between
+"software engineering" and "Software Engineer roles" has two titles as far as
+the history is concerned, and two is worse than none: with one the other
+messages from that employer join it, with two nothing joins anything. Still
+null when the mail names neither a title nor a field.
+
 Reply with JSON only: {"status": "...", "company": "...", "position": "...",
 "note": "one short line on why"}. Use null for company or position if the mail
 genuinely does not say.
